@@ -1,21 +1,86 @@
-"""Unit tests for domain contracts and event envelopes.
+"""Unit tests for domain contracts, protocols, and AI Access Strategy boundaries.
 
-Verifies acceptance criteria for Milestone M0 / Task 0.1.
+Verifies acceptance criteria for Milestone M0 / Task 0.1 & Task 0.2.
 """
 
 import pytest
 from pydantic import ValidationError
 
 from app.domain.contracts import (
+    AIAccessMode,
+    AIAccessRouter,
+    AIAccessStrategy,
+    AICapability,
+    AIExecutionRequest,
+    AIExecutionResult,
     AssistantTurn,
     EmotionState,
+    LLMProvider,
     MemoryCandidate,
+    STTProvider,
     TranscriptResult,
     TranscriptSegment,
     TTSConfig,
+    TTSProvider,
     VisualState,
 )
-from app.domain.events import EventEnvelope
+from app.domain.events import EventEnvelope, EventType
+
+# ==============================================================================
+# MOCK PROVIDERS FOR TESTING PROTOCOLS
+# ==============================================================================
+
+
+class MockSTTProvider:
+    provider_id = "mock_stt"
+
+    async def transcribe(self, audio_data: bytes, language: str | None = None) -> TranscriptResult:
+        return TranscriptResult(
+            text="Mock transcript",
+            detected_language=language or "ja",
+            language_confidence=1.0,
+            provider=self.provider_id,
+            duration_ms=1000,
+        )
+
+
+class MockLLMProvider:
+    provider_id = "mock_llm"
+
+    async def generate_turn(
+        self,
+        prompt: str,
+        context: list[dict[str, str]] | None = None,
+        system_instruction: str | None = None,
+    ) -> AssistantTurn:
+        return AssistantTurn(
+            text="はい、わかりました。",
+            output_language="ja-JP",
+        )
+
+
+class MockTTSProvider:
+    provider_id = "mock_tts"
+
+    async def synthesize(self, text: str, voice_profile_id: str) -> bytes:
+        return b"RIFFmock_audio_bytes"
+
+
+class MockByokStrategy:
+    mode = AIAccessMode.BYOK_DIRECT
+
+    async def execute(self, request: AIExecutionRequest) -> AIExecutionResult:
+        return AIExecutionResult(
+            capability=request.capability,
+            success=True,
+            data={"generated_text": "Mock BYOK response"},
+            route_used=self.mode,
+        )
+
+
+# ==============================================================================
+# TEST SUITE
+# ==============================================================================
 
 
 class TestTranscriptResult:
@@ -54,7 +119,7 @@ class TestTranscriptResult:
             TranscriptResult(
                 text="Test",
                 detected_language="en",
-                language_confidence=1.5,  # Must be <= 1.0
+                language_confidence=1.5,
                 provider="mock",
                 duration_ms=500,
             )
@@ -161,7 +226,6 @@ class TestMemoryCandidate:
         assert len(mem.source_message_ids) == 2
 
     def test_credential_rejection_in_memory_content(self) -> None:
-        """Memory pipeline must strictly reject storing API keys or tokens."""
         with pytest.raises(ValidationError) as exc_info:
             MemoryCandidate(
                 type="user_profile",
@@ -180,18 +244,24 @@ class TestMemoryCandidate:
         assert "apparent credential or secret marker" in str(exc_info.value)
 
 
-class TestEventEnvelope:
-    """Tests for WebSocket EventEnvelope."""
+class TestEventEnvelopeAndTypes:
+    """Tests for WebSocket EventEnvelope and EventType enum."""
 
-    def test_create_factory_method(self) -> None:
+    def test_event_type_enum_values(self) -> None:
+        assert EventType.USER_TEXT_SUBMIT.value == "user.text.submit"
+        assert EventType.ASSISTANT_RESPONSE.value == "assistant.response"
+        assert EventType.SESSION_READY.value == "session.ready"
+        assert EventType.VISUAL_STATE.value == "visual.state"
+
+    def test_create_factory_method_with_enum(self) -> None:
         envelope = EventEnvelope.create(
-            event_type="assistant.response",
+            event_type=EventType.ASSISTANT_RESPONSE,
             conversation_id="conv-123",
             turn_id="turn-456",
             payload={"text": "こんにちは", "output_language": "ja-JP"},
         )
         assert envelope.schema_version == "1.0"
-        assert envelope.type == "assistant.response"
+        assert envelope.type == EventType.ASSISTANT_RESPONSE
         assert envelope.conversation_id == "conv-123"
         assert envelope.turn_id == "turn-456"
         assert envelope.payload["text"] == "こんにちは"
@@ -199,7 +269,7 @@ class TestEventEnvelope:
 
     def test_serialization_and_deserialization(self) -> None:
         envelope = EventEnvelope.create(
-            event_type="session.ready",
+            event_type=EventType.SESSION_READY,
             conversation_id="conv-abc",
             payload={"backend_status": "healthy"},
         )
@@ -207,3 +277,74 @@ class TestEventEnvelope:
         restored = EventEnvelope.model_validate(data)
         assert restored.event_id == envelope.event_id
         assert restored.payload == envelope.payload
+
+
+class TestProviderProtocols:
+    """Tests verifying runtime_checkable provider adapter protocols."""
+
+    def test_mock_stt_implements_protocol(self) -> None:
+        mock = MockSTTProvider()
+        assert isinstance(mock, STTProvider)
+
+    def test_mock_llm_implements_protocol(self) -> None:
+        mock = MockLLMProvider()
+        assert isinstance(mock, LLMProvider)
+
+    def test_mock_tts_implements_protocol(self) -> None:
+        mock = MockTTSProvider()
+        assert isinstance(mock, TTSProvider)
+
+
+class TestAIAccessRouterAndADR014:
+    """Tests for ADR-014 strategy-based AI access routing."""
+
+    def test_default_mode_is_byok_direct(self) -> None:
+        router = AIAccessRouter()
+        assert router.get_route(AICapability.LLM) == AIAccessMode.BYOK_DIRECT
+        assert router.get_route(AICapability.STT) == AIAccessMode.BYOK_DIRECT
+        assert router.get_route(AICapability.TTS) == AIAccessMode.BYOK_DIRECT
+
+    def test_managed_gateway_strictly_disabled_in_m0(self) -> None:
+        router = AIAccessRouter()
+        with pytest.raises(ValueError) as exc_info:
+            router.set_route(AICapability.LLM, AIAccessMode.MANAGED_GATEWAY)
+        assert "strictly DISABLED in Milestone M0" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_successful_execution_via_registered_strategy(self) -> None:
+        router = AIAccessRouter()
+        strategy = MockByokStrategy()
+        assert isinstance(strategy, AIAccessStrategy)
+
+        router.register_strategy(strategy)
+        request = AIExecutionRequest(
+            capability=AICapability.LLM,
+            action="generate_turn",
+            payload={"prompt": "Hello"},
+        )
+
+        result = await router.execute(request)
+        assert result.success is True
+        assert result.route_used == AIAccessMode.BYOK_DIRECT
+        assert result.data["generated_text"] == "Mock BYOK response"
+
+    @pytest.mark.asyncio
+    async def test_no_silent_fallback_on_unregistered_strategy(self) -> None:
+        router = AIAccessRouter()
+        request = AIExecutionRequest(
+            capability=AICapability.LLM,
+            action="generate_turn",
+            payload={"prompt": "Hello"},
+        )
+        with pytest.raises(RuntimeError) as exc_info:
+            await router.execute(request)
+        assert "Silent fallback is prohibited by ADR-014" in str(exc_info.value)
+
+    def test_secret_in_payload_rejected(self) -> None:
+        with pytest.raises(ValidationError) as exc_info:
+            AIExecutionRequest(
+                capability=AICapability.LLM,
+                action="generate_turn",
+                payload={"api_key": "sk-12345"},
+            )
+        assert "Secret marker" in str(exc_info.value)
