@@ -1,12 +1,13 @@
-"""Core domain contracts for Project AIC.
+"""Core domain contracts and AI Access Strategy boundaries for Project AIC.
 
-Corresponds to Section 7 of docs/AIC_ARCHITECTURE_v0.5.md and Milestone M0 requirements.
+Corresponds to Section 7 and ADR-014 of docs/AIC_ARCHITECTURE_v0.5.md and Milestone M0 requirements.
 """
 
 from __future__ import annotations
 
 import re
-from typing import Literal
+from enum import Enum
+from typing import Any, Literal, Protocol, runtime_checkable
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
@@ -271,3 +272,163 @@ class MemoryCandidate(BaseModel):
                     "Credentials and sensitive keys must never enter persistent memory."
                 )
         return value
+
+
+# ==============================================================================
+# SECTION 7.6: MODEL PROVIDER ADAPTER PROTOCOLS
+# ==============================================================================
+
+
+@runtime_checkable
+class STTProvider(Protocol):
+    """Protocol for Speech-to-Text provider adapters."""
+
+    provider_id: str
+
+    async def transcribe(self, audio_data: bytes, language: str | None = None) -> TranscriptResult:
+        """Transcribe raw audio bytes into a normalized TranscriptResult."""
+        ...
+
+
+@runtime_checkable
+class LLMProvider(Protocol):
+    """Protocol for Large Language Model provider adapters."""
+
+    provider_id: str
+
+    async def generate_turn(
+        self,
+        prompt: str,
+        context: list[dict[str, Any]] | None = None,
+        system_instruction: str | None = None,
+    ) -> AssistantTurn:
+        """Generate a structured AssistantTurn response."""
+        ...
+
+
+@runtime_checkable
+class TTSProvider(Protocol):
+    """Protocol for Text-to-Speech provider adapters."""
+
+    provider_id: str
+
+    async def synthesize(self, text: str, voice_profile_id: str) -> bytes:
+        """Synthesize Japanese/multilingual text into audio bytes."""
+        ...
+
+
+# ==============================================================================
+# ADR-014: AI ACCESS STRATEGY & CAPABILITY ROUTING BOUNDARY
+# ==============================================================================
+
+
+class AIAccessMode(str, Enum):
+    """Standardized AI access execution mode per ADR-014."""
+
+    BYOK_DIRECT = "byok_direct"  # Default: User enters key, backend calls cloud direct
+    MANAGED_GATEWAY = "managed_gateway"  # Future extension point (Disabled in M0)
+    LOCAL = "local"  # Optional future route for local inference
+
+
+class AICapability(str, Enum):
+    """AI capability categories routable independently per user settings."""
+
+    LLM = "llm"
+    STT = "stt"
+    TTS = "tts"
+    EMBEDDING = "embedding"
+
+
+class AIExecutionRequest(BaseModel):
+    """Capability-level neutral request contract for Conversation Orchestrator.
+
+    Orchestrator calls this contract without awareness of secrets, billing owner,
+    or endpoint details.
+    """
+
+    capability: AICapability = Field(description="Target AI capability")
+    action: str = Field(description="Capability action, e.g. 'generate_turn', 'transcribe'")
+    payload: dict[str, Any] = Field(default_factory=dict, description="Input data payload")
+    locale: str = Field(default=DEFAULT_OUTPUT_LANGUAGE, description="Target execution locale")
+
+    @field_validator("payload")
+    @classmethod
+    def sanitize_payload(cls, value: dict[str, Any]) -> dict[str, Any]:
+        """Ensure no raw API keys are passed in execution payload."""
+        for k in value:
+            if "api_key" in k.lower() or "secret" in k.lower() or "token" in k.lower():
+                raise ValueError(
+                    f"Secret marker '{k}' must not be passed in AIExecutionRequest payload"
+                )
+        return value
+
+
+class AIExecutionResult(BaseModel):
+    """Normalized response contract returned by AIAccessStrategy."""
+
+    capability: AICapability
+    success: bool
+    data: dict[str, Any] = Field(default_factory=dict)
+    error_message: str | None = None
+    route_used: AIAccessMode
+
+
+@runtime_checkable
+class AIAccessStrategy(Protocol):
+    """Protocol defining how an AI execution route is handled."""
+
+    mode: AIAccessMode
+
+    async def execute(self, request: AIExecutionRequest) -> AIExecutionResult:
+        """Execute capability request under this access strategy."""
+        ...
+
+
+class AIAccessRouter:
+    """Strategy-based router directing capability requests to appropriate access strategy.
+
+    Implements ADR-014 rules:
+    - Default mode is BYOK Direct (`byok_direct`).
+    - Managed Gateway (`managed_gateway`) is disabled in M0.
+    - No silent fallback: If route fails or is unsupported, raise explicit error.
+    - Never leaks credentials into request/response envelopes.
+    """
+
+    def __init__(self) -> None:
+        self._strategies: dict[AIAccessMode, AIAccessStrategy] = {}
+        self._capability_routes: dict[AICapability, AIAccessMode] = {
+            AICapability.LLM: AIAccessMode.BYOK_DIRECT,
+            AICapability.STT: AIAccessMode.BYOK_DIRECT,
+            AICapability.TTS: AIAccessMode.BYOK_DIRECT,
+            AICapability.EMBEDDING: AIAccessMode.BYOK_DIRECT,
+        }
+
+    def register_strategy(self, strategy: AIAccessStrategy) -> None:
+        """Register an active access strategy."""
+        self._strategies[strategy.mode] = strategy
+
+    def set_route(self, capability: AICapability, mode: AIAccessMode) -> None:
+        """Configure access mode for a specific capability."""
+        if mode == AIAccessMode.MANAGED_GATEWAY:
+            raise ValueError(
+                "AIAccessMode.MANAGED_GATEWAY is an extension point and is strictly DISABLED in Milestone M0. "
+                "See ADR-014 and docs/AIC_ARCHITECTURE_v0.5.md."
+            )
+        self._capability_routes[capability] = mode
+
+    def get_route(self, capability: AICapability) -> AIAccessMode:
+        """Retrieve active access mode for given capability."""
+        return self._capability_routes.get(capability, AIAccessMode.BYOK_DIRECT)
+
+    async def execute(self, request: AIExecutionRequest) -> AIExecutionResult:
+        """Route and execute request through configured strategy. Enforces NO SILENT FALLBACK."""
+        mode = self.get_route(request.capability)
+
+        strategy = self._strategies.get(mode)
+        if strategy is None:
+            raise RuntimeError(
+                f"No registered strategy found for capability '{request.capability.value}' "
+                f"configured with mode '{mode.value}'. Silent fallback is prohibited by ADR-014."
+            )
+
+        return await strategy.execute(request)
