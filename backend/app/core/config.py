@@ -43,6 +43,12 @@ class Settings(BaseSettings):
         description="Ephemeral session token passed from Tauri launcher or generated at startup",
     )
 
+    # Database Storage: Local SQLite database file (Section 3.5 / Architecture Section 9)
+    database_path: str = Field(
+        default="data/aic.db",
+        description="Path to SQLite database file. Supports ':memory:' or filesystem paths.",
+    )
+
     # CORS Origins: Restricted strictly to Tauri local webview
     cors_origins: list[str] = [
         "http://localhost:1420",
