@@ -1,0 +1,187 @@
+{
+  "schema_version": "1.0",
+  "character_id": "miku_nakano",
+  "display_name": "Nakano Miku",
+  "default_locale": "ja-JP",
+  "default_outfit": "school_uniform",
+  "description": "Nakano Miku from The Quintessential Quintuplets (Go-tōbun no Hanayome). Third sister of the Nakano quintuplets. Quiet, reserved, wearing blue wireless headphones, passionate about Sengoku-era military commanders.",
+  "compatibility_groups": {
+    "school_uniform": {
+      "display_name": "Asahi High School Uniform & Cardigan",
+      "allowed_poses": ["standing", "sitting", "half_body"],
+      "fallback_outfit": null
+    },
+    "casual": {
+      "display_name": "Casual Cardigan Outfit",
+      "allowed_poses": ["standing", "sitting"],
+      "fallback_outfit": "school_uniform"
+    }
+  },
+  "fallbacks": {
+    "default_asset_id": "miku_core_idle_neutral",
+    "emotion_fallbacks": {
+      "pout": "neutral",
+      "shy": "neutral",
+      "comforting": "happy",
+      "sad": "neutral",
+      "angry": "pout",
+      "surprised": "neutral"
+    },
+    "state_fallbacks": {
+      "speaking": "idle",
+      "listening": "idle"
+    }
+  },
+  "assets": [
+    {
+      "asset_id": "miku_core_idle_neutral",
+      "path": "assets/core/idle_neutral.webp",
+      "format": "webp",
+      "state": "idle",
+      "emotion": "neutral",
+      "intensity": 0.5,
+      "outfit": "school_uniform",
+      "pose": "standing",
+      "action": "idle",
+      "asset_type": "sprite_full",
+      "resolution": {
+        "width": 1024,
+        "height": 1536
+      },
+      "anchor": {
+        "anchor_type": "bottom_center",
+        "anchor_x": 0.5,
+        "anchor_y": 1.0,
+        "focal_x": 0.5,
+        "focal_y": 0.35,
+        "display_scale": 1.0,
+        "viewport_offset_x": 0,
+        "viewport_offset_y": 0
+      },
+      "is_core": true,
+      "status": "ready",
+      "tags": ["core", "miku", "idle", "neutral"],
+      "priority": 100
+    },
+    {
+      "asset_id": "miku_core_happy",
+      "path": "assets/core/happy.webp",
+      "format": "webp",
+      "state": "speaking",
+      "emotion": "happy",
+      "intensity": 0.7,
+      "outfit": "school_uniform",
+      "pose": "standing",
+      "action": "idle",
+      "asset_type": "sprite_full",
+      "resolution": {
+        "width": 1024,
+        "height": 1536
+      },
+      "anchor": {
+        "anchor_type": "bottom_center",
+        "anchor_x": 0.5,
+        "anchor_y": 1.0,
+        "focal_x": 0.5,
+        "focal_y": 0.35,
+        "display_scale": 1.0,
+        "viewport_offset_x": 0,
+        "viewport_offset_y": 0
+      },
+      "is_core": true,
+      "status": "ready",
+      "tags": ["core", "miku", "speaking", "happy"],
+      "priority": 100
+    },
+    {
+      "asset_id": "miku_core_pout",
+      "path": "assets/core/pout.webp",
+      "format": "webp",
+      "state": "idle",
+      "emotion": "pout",
+      "intensity": 0.8,
+      "outfit": "school_uniform",
+      "pose": "standing",
+      "action": "idle",
+      "asset_type": "sprite_full",
+      "resolution": {
+        "width": 1024,
+        "height": 1536
+      },
+      "anchor": {
+        "anchor_type": "bottom_center",
+        "anchor_x": 0.5,
+        "anchor_y": 1.0,
+        "focal_x": 0.5,
+        "focal_y": 0.35,
+        "display_scale": 1.0,
+        "viewport_offset_x": 0,
+        "viewport_offset_y": 0
+      },
+      "is_core": true,
+      "status": "ready",
+      "tags": ["core", "miku", "idle", "pout"],
+      "priority": 100
+    },
+    {
+      "asset_id": "miku_core_blush_shy",
+      "path": "assets/core/blush_shy.webp",
+      "format": "webp",
+      "state": "speaking",
+      "emotion": "shy",
+      "intensity": 0.75,
+      "outfit": "school_uniform",
+      "pose": "standing",
+      "action": "idle",
+      "asset_type": "sprite_full",
+      "resolution": {
+        "width": 1024,
+        "height": 1536
+      },
+      "anchor": {
+        "anchor_type": "bottom_center",
+        "anchor_x": 0.5,
+        "anchor_y": 1.0,
+        "focal_x": 0.5,
+        "focal_y": 0.35,
+        "display_scale": 1.0,
+        "viewport_offset_x": 0,
+        "viewport_offset_y": 0
+      },
+      "is_core": true,
+      "status": "ready",
+      "tags": ["core", "miku", "speaking", "shy"],
+      "priority": 100
+    },
+    {
+      "asset_id": "miku_core_comforting",
+      "path": "assets/core/comforting.webp",
+      "format": "webp",
+      "state": "speaking",
+      "emotion": "comforting",
+      "intensity": 0.65,
+      "outfit": "school_uniform",
+      "pose": "standing",
+      "action": "idle",
+      "asset_type": "sprite_full",
+      "resolution": {
+        "width": 1024,
+        "height": 1536
+      },
+      "anchor": {
+        "anchor_type": "bottom_center",
+        "anchor_x": 0.5,
+        "anchor_y": 1.0,
+        "focal_x": 0.5,
+        "focal_y": 0.35,
+        "display_scale": 1.0,
+        "viewport_offset_x": 0,
+        "viewport_offset_y": 0
+      },
+      "is_core": true,
+      "status": "ready",
+      "tags": ["core", "miku", "speaking", "comforting"],
+      "priority": 100
+    }
+  ]
+}
