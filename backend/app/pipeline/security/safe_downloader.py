@@ -6,6 +6,7 @@ Phase 0.5A Automatic Asset Processing Pipeline.
 from __future__ import annotations
 
 import asyncio
+from collections import OrderedDict
 from urllib.parse import urljoin
 
 import httpx
@@ -45,6 +46,7 @@ class SafeDownloader:
         timeout_seconds: float = 10.0,
         connect_timeout_seconds: float = 5.0,
         max_redirects: int = 3,
+        max_cache_entries: int = 64,
     ) -> None:
         self.guard = guard if guard is not None else SSRFGuard()
         self.sanitizer = sanitizer if sanitizer is not None else ImageSanitizer()
@@ -52,8 +54,9 @@ class SafeDownloader:
         self.timeout_seconds = timeout_seconds
         self.connect_timeout_seconds = connect_timeout_seconds
         self.max_redirects = max_redirects
+        self.max_cache_entries = max_cache_entries
         self._url_locks: dict[str, asyncio.Lock] = {}
-        self._cache: dict[str, bytes] = {}
+        self._cache: OrderedDict[str, bytes] = OrderedDict()
 
     def _get_url_lock(self, url: str) -> asyncio.Lock:
         if url not in self._url_locks:
@@ -68,10 +71,14 @@ class SafeDownloader:
         lock = self._get_url_lock(url)
         async with lock:
             if url in self._cache:
+                self._cache.move_to_end(url)
                 return self._cache[url]
 
             data = await self._download_uncached(url)
             self._cache[url] = data
+            self._cache.move_to_end(url)
+            if len(self._cache) > self.max_cache_entries:
+                self._cache.popitem(last=False)
             return data
 
     async def _download_uncached(self, start_url: str) -> bytes:

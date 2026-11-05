@@ -181,3 +181,35 @@ async def test_concurrent_download_deduplication() -> None:
     assert all(r == fake_bytes for r in results)
     assert call_count == 1
 
+
+@pytest.mark.asyncio
+async def test_bounded_cache_eviction() -> None:
+    """Verifies that SafeDownloader evicts oldest cache entry when max_cache_entries is exceeded."""
+    guard = SSRFGuard()
+    downloader = SafeDownloader(guard=guard, max_cache_entries=3)
+
+    async def fake_uncached(url: str) -> bytes:
+        return f"content_of_{url}".encode()
+
+    downloader._download_uncached = fake_uncached  # type: ignore[assignment]
+
+    await downloader.download("https://example.com/1.png")
+    await downloader.download("https://example.com/2.png")
+    await downloader.download("https://example.com/3.png")
+
+    assert len(downloader._cache) == 3
+    assert "https://example.com/1.png" in downloader._cache
+
+    # Access 1 again so 2 becomes the least recently used
+    await downloader.download("https://example.com/1.png")
+
+    # Add a 4th entry
+    await downloader.download("https://example.com/4.png")
+
+    assert len(downloader._cache) == 3
+    # 2 was evicted (LRU)
+    assert "https://example.com/2.png" not in downloader._cache
+    assert "https://example.com/1.png" in downloader._cache
+    assert "https://example.com/3.png" in downloader._cache
+    assert "https://example.com/4.png" in downloader._cache
+

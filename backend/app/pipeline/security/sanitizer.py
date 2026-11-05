@@ -6,6 +6,7 @@ Phase 0.5A Automatic Asset Processing Pipeline.
 from __future__ import annotations
 
 import io
+import warnings
 
 from PIL import Image
 
@@ -65,12 +66,21 @@ class ImageSanitizer:
         orig_max_pixels = Image.MAX_IMAGE_PIXELS
         try:
             Image.MAX_IMAGE_PIXELS = self.max_pixels
-            with Image.open(io.BytesIO(data)) as img:
-                img.verify()
-        except Image.DecompressionBombError as e:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", Image.DecompressionBombWarning)
+                with Image.open(io.BytesIO(data)) as img:
+                    if img.width * img.height > self.max_pixels:
+                        raise SecurityViolationError(
+                            f"Decompression bomb detected: image pixel count ({img.width * img.height}) "
+                            f"exceeds limit ({self.max_pixels})."
+                        )
+                    img.verify()
+        except (Image.DecompressionBombError, Image.DecompressionBombWarning) as e:
             raise SecurityViolationError(
-                f"Decompression bomb detected: image exceeds pixel limit ({self.max_pixels})."
+                f"Decompression bomb detected: image exceeds pixel limit ({self.max_pixels}): {e}"
             ) from e
+        except SecurityViolationError:
+            raise
         except Exception as e:
             raise CorruptedImageError(f"Corrupted or invalid image stream: {e}") from e
         finally:
@@ -85,17 +95,26 @@ class ImageSanitizer:
         orig_max_pixels = Image.MAX_IMAGE_PIXELS
         try:
             Image.MAX_IMAGE_PIXELS = self.max_pixels
-            with Image.open(io.BytesIO(data)) as raw_img:
-                raw_img.load()
-                # Create a pristine new RGBA canvas without any EXIF/XMP chunks
-                clean_canvas = Image.new("RGBA", raw_img.size, (0, 0, 0, 0))
-                converted = raw_img.convert("RGBA")
-                clean_canvas.paste(converted, (0, 0))
-                return clean_canvas
-        except Image.DecompressionBombError as e:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", Image.DecompressionBombWarning)
+                with Image.open(io.BytesIO(data)) as raw_img:
+                    if raw_img.width * raw_img.height > self.max_pixels:
+                        raise SecurityViolationError(
+                            f"Decompression bomb detected: image pixel count ({raw_img.width * raw_img.height}) "
+                            f"exceeds limit ({self.max_pixels})."
+                        )
+                    raw_img.load()
+                    # Create a pristine new RGBA canvas without any EXIF/XMP chunks
+                    clean_canvas = Image.new("RGBA", raw_img.size, (0, 0, 0, 0))
+                    converted = raw_img.convert("RGBA")
+                    clean_canvas.paste(converted, (0, 0))
+                    return clean_canvas
+        except (Image.DecompressionBombError, Image.DecompressionBombWarning) as e:
             raise SecurityViolationError(
                 f"Decompression bomb detected during rasterization: {e}"
             ) from e
+        except SecurityViolationError:
+            raise
         except Exception as e:
             raise CorruptedImageError(f"Failed to rasterize and sanitize image: {e}") from e
         finally:

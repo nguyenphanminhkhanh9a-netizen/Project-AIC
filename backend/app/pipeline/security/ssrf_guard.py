@@ -110,14 +110,16 @@ class SSRFGuard:
         # Check if hostname is directly an IP literal
         try:
             direct_ip = ipaddress.ip_address(hostname.strip("[]"))
+            is_ip = True
+        except ValueError:
+            is_ip = False
+
+        if is_ip:
             if not self.is_safe_ip(str(direct_ip)):
                 raise SSRFSecurityError(
                     f"Direct connection to blocked IP '{direct_ip}' is prohibited."
                 )
             return
-        except ValueError:
-            # Not an IP literal, proceed to DNS resolution
-            pass
 
         try:
             addr_info = socket.getaddrinfo(

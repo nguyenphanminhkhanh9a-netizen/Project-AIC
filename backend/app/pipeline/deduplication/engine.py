@@ -95,10 +95,29 @@ class MultiScaleDeduplicator:
         # Stage 3: Decision Rules
         action: DeduplicationAction
 
-        # Distinct expression found: SSIM < 0.88 OR facial Hamming distance >= 8
-        if (
+        # Check duplicate condition first: SSIM >= duplicate threshold (0.94)
+        if facial_ssim >= self.config.facial_ssim_duplicate_threshold:
+            if face_dist <= self.config.facial_hamming_duplicate_threshold:
+                action = "reject"
+                is_duplicate = True
+                is_suspect = True
+                reason = (
+                    f"Exact duplicate matching '{closest_asset_id}' (SSIM={facial_ssim:.3f}, "
+                    f"face_dist={face_dist})."
+                )
+            else:
+                # Ambiguity: Very high facial SSIM but elevated hash distance -> quarantine for human review
+                action = "quarantine"
+                is_duplicate = False
+                is_suspect = True
+                reason = (
+                    f"High facial similarity with elevated hash distance (SSIM={facial_ssim:.3f}, "
+                    f"face_dist={face_dist}) quarantined to needs_review."
+                )
+        # Distinct expression confirmed: SSIM < 0.88 AND facial Hamming distance >= 8
+        elif (
             facial_ssim < self.config.facial_ssim_quarantine_low
-            or face_dist >= self.config.facial_hamming_distinct_threshold
+            and face_dist >= self.config.facial_hamming_distinct_threshold
         ):
             action = "accept"
             is_duplicate = False
@@ -107,19 +126,7 @@ class MultiScaleDeduplicator:
                 f"Distinct facial expression confirmed (SSIM={facial_ssim:.3f}, "
                 f"face_dist={face_dist})."
             )
-        # Exact duplicate found: SSIM >= 0.94 AND facial Hamming distance <= 2
-        elif (
-            facial_ssim >= self.config.facial_ssim_duplicate_threshold
-            and face_dist <= self.config.facial_hamming_duplicate_threshold
-        ):
-            action = "reject"
-            is_duplicate = True
-            is_suspect = True
-            reason = (
-                f"Exact duplicate matching '{closest_asset_id}' (SSIM={facial_ssim:.3f}, "
-                f"face_dist={face_dist})."
-            )
-        # Ambiguous / Borderline duplicate: SSIM in [0.88, 0.94)
+        # Borderline range: SSIM in [0.88, 0.94) or non-distinct hash distance
         else:
             action = "quarantine"
             is_duplicate = False
