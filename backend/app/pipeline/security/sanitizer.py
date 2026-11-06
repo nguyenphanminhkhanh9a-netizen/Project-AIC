@@ -6,26 +6,9 @@ Phase 0.5A Automatic Asset Processing Pipeline.
 from __future__ import annotations
 
 import io
-import threading
-import typing
 import warnings
-from contextlib import contextmanager
 
 from PIL import Image
-
-_PIL_CONFIG_LOCK = threading.RLock()
-
-
-@contextmanager
-def _scoped_max_pixels(max_pixels: int | None) -> typing.Iterator[None]:
-    """Thread-safe context manager to temporarily scope PIL's global pixel limit."""
-    with _PIL_CONFIG_LOCK:
-        orig_max_pixels = Image.MAX_IMAGE_PIXELS
-        try:
-            Image.MAX_IMAGE_PIXELS = max_pixels
-            yield
-        finally:
-            Image.MAX_IMAGE_PIXELS = orig_max_pixels
 
 
 class ImageSanitizationError(ValueError):
@@ -81,9 +64,11 @@ class ImageSanitizer:
         fmt = self.sniff_magic_bytes(data[:32])
 
         try:
-            with _scoped_max_pixels(self.max_pixels), warnings.catch_warnings():
+            with warnings.catch_warnings():
                 warnings.simplefilter("error", Image.DecompressionBombWarning)
                 with Image.open(io.BytesIO(data)) as img:
+                    if img.width <= 0 or img.height <= 0:
+                        raise CorruptedImageError("Image dimensions must be positive.")
                     if img.width * img.height > self.max_pixels:
                         raise SecurityViolationError(
                             f"Decompression bomb detected: image pixel count ({img.width * img.height}) "
@@ -94,7 +79,7 @@ class ImageSanitizer:
             raise SecurityViolationError(
                 f"Decompression bomb detected: image exceeds pixel limit ({self.max_pixels}): {e}"
             ) from e
-        except SecurityViolationError:
+        except (SecurityViolationError, CorruptedImageError):
             raise
         except Exception as e:
             raise CorruptedImageError(f"Corrupted or invalid image stream: {e}") from e
@@ -106,25 +91,27 @@ class ImageSanitizer:
         self.validate_raw_bytes(data)
 
         try:
-            with _scoped_max_pixels(self.max_pixels), warnings.catch_warnings():
+            with warnings.catch_warnings():
                 warnings.simplefilter("error", Image.DecompressionBombWarning)
                 with Image.open(io.BytesIO(data)) as raw_img:
-                        if raw_img.width * raw_img.height > self.max_pixels:
-                            raise SecurityViolationError(
-                                f"Decompression bomb detected: image pixel count ({raw_img.width * raw_img.height}) "
-                                f"exceeds limit ({self.max_pixels})."
-                            )
-                        raw_img.load()
-                        # Create a pristine new RGBA canvas without any EXIF/XMP chunks
-                        clean_canvas = Image.new("RGBA", raw_img.size, (0, 0, 0, 0))
-                        converted = raw_img.convert("RGBA")
-                        clean_canvas.paste(converted, (0, 0))
-                        return clean_canvas
+                    if raw_img.width <= 0 or raw_img.height <= 0:
+                        raise CorruptedImageError("Image dimensions must be positive.")
+                    if raw_img.width * raw_img.height > self.max_pixels:
+                        raise SecurityViolationError(
+                            f"Decompression bomb detected: image pixel count ({raw_img.width * raw_img.height}) "
+                            f"exceeds limit ({self.max_pixels})."
+                        )
+                    raw_img.load()
+                    # Create a pristine new RGBA canvas without any EXIF/XMP chunks
+                    clean_canvas = Image.new("RGBA", raw_img.size, (0, 0, 0, 0))
+                    converted = raw_img.convert("RGBA")
+                    clean_canvas.paste(converted, (0, 0))
+                    return clean_canvas
         except (Image.DecompressionBombError, Image.DecompressionBombWarning) as e:
             raise SecurityViolationError(
                 f"Decompression bomb detected during rasterization: {e}"
             ) from e
-        except SecurityViolationError:
+        except (SecurityViolationError, CorruptedImageError):
             raise
         except Exception as e:
             raise CorruptedImageError(f"Failed to rasterize and sanitize image: {e}") from e
