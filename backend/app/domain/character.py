@@ -79,7 +79,14 @@ class Resolution(BaseModel):
     height: int = Field(gt=0, description="Image height in pixels")
 
 
-AssetStatus = Literal["ready", "processing", "failed", "rejected"]
+AssetStatus = Literal[
+    "ready",
+    "processing",
+    "pending",
+    "needs_review",
+    "failed",
+    "rejected",
+]
 
 
 class AssetDefinition(BaseModel):

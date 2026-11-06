@@ -28,6 +28,18 @@ MatchStrategy = Literal[
 ]
 
 
+class AssetResolutionError(ValueError):
+    """Base exception for asset resolution failures."""
+
+
+class DefaultAssetMissingError(AssetResolutionError):
+    """Raised when declared default fallback asset is missing from manifest."""
+
+
+class DefaultAssetNotReadyError(AssetResolutionError):
+    """Raised when declared default fallback asset exists but is not in 'ready' status."""
+
+
 class MissingAssetRequest(BaseModel):
     """Notification payload when an exact asset match is not present in the pack."""
 
@@ -72,16 +84,21 @@ class CharacterAssetResolver:
 
     def _build_index(self) -> None:
         """Indexes manifest assets in memory for O(1) multi-key lookup."""
+        new_assets_by_id: dict[str, AssetDefinition] = {}
+        new_index: dict[tuple[str, str, str], list[AssetDefinition]] = defaultdict(list)
         for asset in self.manifest.assets:
-            self._assets_by_id[asset.asset_id] = asset
+            new_assets_by_id[asset.asset_id] = asset
             # Only index assets marked as "ready" for display resolution
             if asset.status == "ready":
                 key = (asset.outfit, asset.state, asset.emotion)
-                self._index[key].append(asset)
+                new_index[key].append(asset)
 
         # Sort each bucket by descending priority so the highest priority is first
-        for key in self._index:
-            self._index[key].sort(key=lambda a: a.priority, reverse=True)
+        for bucket in new_index.values():
+            bucket.sort(key=lambda a: a.priority, reverse=True)
+
+        self._assets_by_id = new_assets_by_id
+        self._index = new_index
 
     def _find_in_bucket(self, outfit: str, state: str, emotion: str) -> AssetDefinition | None:
         """Finds highest-priority ready asset matching exact (outfit, state, emotion)."""
@@ -166,13 +183,25 @@ class CharacterAssetResolver:
             default_id = self.manifest.fallbacks.default_asset_id
             selected = self._assets_by_id.get(default_id)
             if not selected:
-                raise ValueError(
+                raise DefaultAssetMissingError(
                     f"Default asset '{default_id}' defined in manifest.fallbacks.default_asset_id "
                     f"was not found in assets list for character '{self.manifest.character_id}'."
+                )
+            if selected.status != "ready":
+                raise DefaultAssetNotReadyError(
+                    f"Default asset '{default_id}' for character '{self.manifest.character_id}' "
+                    f"is not ready (current status: '{selected.status}'). "
+                    f"Resolver invariant violated: non-ready assets cannot be resolved."
                 )
             match_strategy = "default_fallback"
 
         assert match_strategy is not None
+
+        if selected is None or selected.status != "ready":
+            raise AssetResolutionError(
+                f"Internal resolver error: asset '{getattr(selected, 'asset_id', None)}' "
+                f"is not in 'ready' status (status: '{getattr(selected, 'status', None)}')."
+            )
 
         is_fallback = match_strategy != "exact"
 
