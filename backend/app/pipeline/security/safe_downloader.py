@@ -6,9 +6,15 @@ Phase 0.5A Automatic Asset Processing Pipeline.
 from __future__ import annotations
 
 import asyncio
+import ipaddress
+import socket
 from collections import OrderedDict
+from collections.abc import AsyncGenerator, Iterable
+from contextlib import asynccontextmanager
+from typing import Any
 from urllib.parse import urljoin
 
+import httpcore
 import httpx
 
 from app.pipeline.security.sanitizer import ImageSanitizer
@@ -35,6 +41,112 @@ class DownloadInterruptedError(SafeDownloaderError):
     """Raised when connection drops mid-stream or protocol error occurs."""
 
 
+class SSRFSafeNetworkBackend(httpcore.AsyncNetworkBackend):
+    """Custom HTTPCore network backend that enforces SSRF checks and pins IP connections."""
+
+    def __init__(
+        self,
+        guard: SSRFGuard,
+        backend: httpcore.AsyncNetworkBackend | None = None,
+    ) -> None:
+        self.guard = guard
+        self._backend = backend or httpcore.AnyIOBackend()
+
+    async def connect_tcp(
+        self,
+        host: str,
+        port: int,
+        timeout: float | None = None,
+        local_address: str | None = None,
+        socket_options: Iterable[httpcore.SOCKET_OPTION] | None = None,
+    ) -> httpcore.AsyncNetworkStream:
+        clean_host = host.strip("[]")
+        try:
+            ipaddress.ip_address(clean_host)
+            is_ip = True
+        except ValueError:
+            is_ip = False
+
+        if is_ip:
+            if not self.guard.is_safe_ip(clean_host):
+                raise SSRFSecurityError(
+                    f"Direct connection to blocked IP '{clean_host}' is prohibited."
+                )
+            safe_ips = [clean_host]
+        else:
+            loop = asyncio.get_running_loop()
+            try:
+                addr_info = await loop.getaddrinfo(
+                    host,
+                    port,
+                    family=socket.AF_UNSPEC,
+                    type=socket.SOCK_STREAM,
+                )
+            except socket.gaierror as e:
+                raise SSRFSecurityError(f"Failed to resolve hostname '{host}': {e}") from e
+
+            if not addr_info:
+                raise SSRFSecurityError(f"No IP address resolved for hostname '{host}'.")
+
+            safe_ips = []
+            for entry in addr_info:
+                ip_str = str(entry[4][0])
+                if not self.guard.is_safe_ip(ip_str):
+                    raise SSRFSecurityError(
+                        f"Hostname '{host}' resolved to blocked IP '{ip_str}'."
+                    )
+                safe_ips.append(ip_str)
+
+        # Connect to validated safe IP literals (prevents OS-level DNS re-resolution)
+        last_exc: Exception | None = None
+        for ip in safe_ips:
+            try:
+                return await self._backend.connect_tcp(
+                    host=ip,
+                    port=port,
+                    timeout=timeout,
+                    local_address=local_address,
+                    socket_options=socket_options,
+                )
+            except (httpcore.ConnectError, httpcore.ConnectTimeout, OSError) as exc:
+                last_exc = exc
+
+        if last_exc is not None:
+            raise last_exc
+        raise httpcore.ConnectError(f"Failed to connect to '{host}:{port}'.")
+
+    async def connect_unix_socket(
+        self,
+        path: str,
+        timeout: float | None = None,
+        socket_options: Iterable[httpcore.SOCKET_OPTION] | None = None,
+    ) -> httpcore.AsyncNetworkStream:
+        return await self._backend.connect_unix_socket(
+            path=path,
+            timeout=timeout,
+            socket_options=socket_options,
+        )
+
+    async def sleep(self, seconds: float) -> None:
+        await self._backend.sleep(seconds)
+
+
+class SSRFSafeTransport(httpx.AsyncHTTPTransport):
+    """Async HTTP transport enforcing SSRF validation and IP connection pinning."""
+
+    def __init__(self, guard: SSRFGuard, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._pool = httpcore.AsyncConnectionPool(
+            ssl_context=self._pool._ssl_context,
+            max_connections=self._pool._max_connections,
+            max_keepalive_connections=self._pool._max_keepalive_connections,
+            keepalive_expiry=self._pool._keepalive_expiry,
+            http1=self._pool._http1,
+            http2=self._pool._http2,
+            network_backend=SSRFSafeNetworkBackend(guard=guard),
+        )
+
+
 class SafeDownloader:
     """Safely downloads remote images enforcing SSRF guards, redirect limits, and payload caps."""
 
@@ -47,6 +159,7 @@ class SafeDownloader:
         connect_timeout_seconds: float = 5.0,
         max_redirects: int = 3,
         max_cache_entries: int = 64,
+        max_cache_bytes: int = 64 * 1024 * 1024,
     ) -> None:
         self.guard = guard if guard is not None else SSRFGuard()
         self.sanitizer = sanitizer if sanitizer is not None else ImageSanitizer()
@@ -55,30 +168,75 @@ class SafeDownloader:
         self.connect_timeout_seconds = connect_timeout_seconds
         self.max_redirects = max_redirects
         self.max_cache_entries = max_cache_entries
+        self.max_cache_bytes = max_cache_bytes
         self._url_locks: dict[str, asyncio.Lock] = {}
+        self._url_ref_counts: dict[str, int] = {}
         self._cache: OrderedDict[str, bytes] = OrderedDict()
+        self._current_cache_bytes: int = 0
 
     def _get_url_lock(self, url: str) -> asyncio.Lock:
         if url not in self._url_locks:
             self._url_locks[url] = asyncio.Lock()
         return self._url_locks[url]
 
+    @asynccontextmanager
+    async def _acquire_url_lock(self, url: str) -> AsyncGenerator[None, None]:
+        if url not in self._url_locks:
+            self._url_locks[url] = asyncio.Lock()
+            self._url_ref_counts[url] = 0
+        self._url_ref_counts[url] += 1
+        lock = self._url_locks[url]
+
+        try:
+            async with lock:
+                yield
+        finally:
+            self._url_ref_counts[url] -= 1
+            if self._url_ref_counts[url] <= 0:
+                self._url_locks.pop(url, None)
+                self._url_ref_counts.pop(url, None)
+
+    def _store_in_cache(self, url: str, data: bytes) -> None:
+        data_len = len(data)
+        if (
+            self.max_cache_entries <= 0
+            or self.max_cache_bytes <= 0
+            or data_len > self.max_cache_bytes
+        ):
+            return
+
+        if url in self._cache:
+            old_bytes = self._cache.pop(url)
+            self._current_cache_bytes -= len(old_bytes)
+
+        # Evict oldest until incoming fits both count and byte constraints
+        while self._cache and (
+            len(self._cache) >= self.max_cache_entries
+            or self._current_cache_bytes + data_len > self.max_cache_bytes
+        ):
+            _, evicted_bytes = self._cache.popitem(last=False)
+            self._current_cache_bytes -= len(evicted_bytes)
+
+        if (
+            self._current_cache_bytes + data_len <= self.max_cache_bytes
+            and len(self._cache) < self.max_cache_entries
+        ):
+            self._cache[url] = data
+            self._current_cache_bytes += data_len
+            self._cache.move_to_end(url)
+
     async def download(self, url: str) -> bytes:
         """Downloads an image from URL enforcing SSRF validation, redirects, and size caps.
 
         Uses in-flight locking to prevent duplicate concurrent downloads of identical URLs.
         """
-        lock = self._get_url_lock(url)
-        async with lock:
+        async with self._acquire_url_lock(url):
             if url in self._cache:
                 self._cache.move_to_end(url)
                 return self._cache[url]
 
             data = await self._download_uncached(url)
-            self._cache[url] = data
-            self._cache.move_to_end(url)
-            if len(self._cache) > self.max_cache_entries:
-                self._cache.popitem(last=False)
+            self._store_in_cache(url, data)
             return data
 
     async def _download_uncached(self, start_url: str) -> bytes:
@@ -99,7 +257,12 @@ class SafeDownloader:
             "Accept": "image/webp,image/png,image/jpeg,image/*;q=0.8",
         }
 
-        async with httpx.AsyncClient(follow_redirects=False, timeout=timeout) as client:
+        transport = SSRFSafeTransport(guard=self.guard)
+        async with httpx.AsyncClient(
+            transport=transport,
+            follow_redirects=False,
+            timeout=timeout,
+        ) as client:
             while True:
                 # 1. Anti-SSRF check before every request/hop
                 try:

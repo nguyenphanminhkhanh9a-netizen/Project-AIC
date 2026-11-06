@@ -82,6 +82,51 @@ class SSRFGuard:
 
         return True
 
+    def resolve_and_validate_host(self, hostname: str, port: int) -> list[str]:
+        """Resolves hostname and verifies that all resolved IP addresses are safe.
+
+        Returns the list of validated IP strings.
+        Raises SSRFSecurityError if resolution fails or any IP is unsafe.
+        """
+        clean_host = hostname.strip("[]")
+        try:
+            direct_ip = ipaddress.ip_address(clean_host)
+            is_ip = True
+        except ValueError:
+            is_ip = False
+
+        if is_ip:
+            if not self.is_safe_ip(str(direct_ip)):
+                raise SSRFSecurityError(
+                    f"Direct connection to blocked IP '{direct_ip}' is prohibited."
+                )
+            return [str(direct_ip)]
+
+        try:
+            addr_info = socket.getaddrinfo(
+                hostname,
+                port,
+                family=socket.AF_UNSPEC,
+                type=socket.SOCK_STREAM,
+            )
+        except socket.gaierror as e:
+            raise SSRFSecurityError(f"Failed to resolve hostname '{hostname}': {e}") from e
+
+        if not addr_info:
+            raise SSRFSecurityError(f"No IP address resolved for hostname '{hostname}'.")
+
+        safe_ips: list[str] = []
+        for entry in addr_info:
+            sockaddr = entry[4]
+            ip_str = str(sockaddr[0])
+            if not self.is_safe_ip(ip_str):
+                raise SSRFSecurityError(
+                    f"Hostname '{hostname}' resolved to blocked IP '{ip_str}'."
+                )
+            safe_ips.append(ip_str)
+
+        return safe_ips
+
     def validate_url(self, url: str) -> None:
         """Validates that a URL uses an allowed scheme and does not resolve to a blocked IP.
 
@@ -106,38 +151,4 @@ class SSRFGuard:
             raise SSRFSecurityError("URL does not contain a valid hostname.")
 
         port = parsed.port or (443 if scheme == "https" else 80)
-
-        # Check if hostname is directly an IP literal
-        try:
-            direct_ip = ipaddress.ip_address(hostname.strip("[]"))
-            is_ip = True
-        except ValueError:
-            is_ip = False
-
-        if is_ip:
-            if not self.is_safe_ip(str(direct_ip)):
-                raise SSRFSecurityError(
-                    f"Direct connection to blocked IP '{direct_ip}' is prohibited."
-                )
-            return
-
-        try:
-            addr_info = socket.getaddrinfo(
-                hostname,
-                port,
-                family=socket.AF_UNSPEC,
-                type=socket.SOCK_STREAM,
-            )
-        except socket.gaierror as e:
-            raise SSRFSecurityError(f"Failed to resolve hostname '{hostname}': {e}") from e
-
-        if not addr_info:
-            raise SSRFSecurityError(f"No IP address resolved for hostname '{hostname}'.")
-
-        for entry in addr_info:
-            sockaddr = entry[4]
-            ip_str = str(sockaddr[0])
-            if not self.is_safe_ip(ip_str):
-                raise SSRFSecurityError(
-                    f"Hostname '{hostname}' resolved to blocked IP '{ip_str}'."
-                )
+        self.resolve_and_validate_host(hostname, port)

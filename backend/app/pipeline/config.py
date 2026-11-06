@@ -45,6 +45,13 @@ class PipelineConfig(BaseSettings):
         default=8192 * 8192, description="67 Megapixels decompress bomb limit"
     )
     allowed_schemes: tuple[str, ...] = ("http", "https")
+    max_downloader_cache_entries: int = Field(
+        default=64, description="Maximum items cached in SafeDownloader"
+    )
+    max_downloader_cache_bytes: int = Field(
+        default=64 * 1024 * 1024,
+        description="64 MB maximum cumulative byte size of SafeDownloader cache",
+    )
 
     # Quality Gate (CQS) Settings
     min_resolution_width: int = Field(default=512)
