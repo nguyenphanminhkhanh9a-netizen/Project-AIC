@@ -6,7 +6,6 @@ Phase 0.5A Automatic Asset Processing Pipeline.
 from __future__ import annotations
 
 import io
-import warnings
 
 from PIL import Image
 
@@ -64,17 +63,17 @@ class ImageSanitizer:
         fmt = self.sniff_magic_bytes(data[:32])
 
         try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("error", Image.DecompressionBombWarning)
-                with Image.open(io.BytesIO(data)) as img:
-                    if img.width <= 0 or img.height <= 0:
-                        raise CorruptedImageError("Image dimensions must be positive.")
-                    if img.width * img.height > self.max_pixels:
-                        raise SecurityViolationError(
-                            f"Decompression bomb detected: image pixel count ({img.width * img.height}) "
-                            f"exceeds limit ({self.max_pixels})."
-                        )
-                    img.verify()
+            with Image.open(io.BytesIO(data)) as img:
+                if img.width <= 0 or img.height <= 0:
+                    raise CorruptedImageError("Image dimensions must be positive.")
+                pixels = img.width * img.height
+                pillow_limit = Image.MAX_IMAGE_PIXELS if Image.MAX_IMAGE_PIXELS is not None else 89_478_485
+                if pixels > self.max_pixels or pixels > pillow_limit:
+                    raise SecurityViolationError(
+                        f"Decompression bomb detected: image pixel count ({pixels}) "
+                        f"exceeds limit (max_pixels: {self.max_pixels}, pillow_limit: {pillow_limit})."
+                    )
+                img.verify()
         except (Image.DecompressionBombError, Image.DecompressionBombWarning) as e:
             raise SecurityViolationError(
                 f"Decompression bomb detected: image exceeds pixel limit ({self.max_pixels}): {e}"
@@ -91,22 +90,22 @@ class ImageSanitizer:
         self.validate_raw_bytes(data)
 
         try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("error", Image.DecompressionBombWarning)
-                with Image.open(io.BytesIO(data)) as raw_img:
-                    if raw_img.width <= 0 or raw_img.height <= 0:
-                        raise CorruptedImageError("Image dimensions must be positive.")
-                    if raw_img.width * raw_img.height > self.max_pixels:
-                        raise SecurityViolationError(
-                            f"Decompression bomb detected: image pixel count ({raw_img.width * raw_img.height}) "
-                            f"exceeds limit ({self.max_pixels})."
-                        )
-                    raw_img.load()
-                    # Create a pristine new RGBA canvas without any EXIF/XMP chunks
-                    clean_canvas = Image.new("RGBA", raw_img.size, (0, 0, 0, 0))
-                    converted = raw_img.convert("RGBA")
-                    clean_canvas.paste(converted, (0, 0))
-                    return clean_canvas
+            with Image.open(io.BytesIO(data)) as raw_img:
+                if raw_img.width <= 0 or raw_img.height <= 0:
+                    raise CorruptedImageError("Image dimensions must be positive.")
+                pixels = raw_img.width * raw_img.height
+                pillow_limit = Image.MAX_IMAGE_PIXELS if Image.MAX_IMAGE_PIXELS is not None else 89_478_485
+                if pixels > self.max_pixels or pixels > pillow_limit:
+                    raise SecurityViolationError(
+                        f"Decompression bomb detected: image pixel count ({pixels}) "
+                        f"exceeds limit (max_pixels: {self.max_pixels}, pillow_limit: {pillow_limit})."
+                    )
+                raw_img.load()
+                # Create a pristine new RGBA canvas without any EXIF/XMP chunks
+                clean_canvas = Image.new("RGBA", raw_img.size, (0, 0, 0, 0))
+                converted = raw_img.convert("RGBA")
+                clean_canvas.paste(converted, (0, 0))
+                return clean_canvas
         except (Image.DecompressionBombError, Image.DecompressionBombWarning) as e:
             raise SecurityViolationError(
                 f"Decompression bomb detected during rasterization: {e}"

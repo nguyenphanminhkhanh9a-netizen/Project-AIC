@@ -12,10 +12,13 @@ from __future__ import annotations
 
 import asyncio
 import io
+import struct
 import threading
 import time
 import typing
 import unittest.mock
+import warnings
+import zlib
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -414,3 +417,131 @@ def test_concurrent_sanitization_no_mutual_exclusion_lock() -> None:
 
     assert overlap_detected, "Both sanitizers should be actively processing simultaneously without lock serialization!"
     assert Image.MAX_IMAGE_PIXELS == 89_478_485
+
+
+def _synthesize_fast_bomb_png(width: int, height: int) -> bytes:
+    """Helper to synthesize a highly-compressed valid PNG with specified dimensions."""
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(data))
+            + tag
+            + data
+            + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+        )
+
+    header = b"\x89PNG\r\n\x1a\n"
+    ihdr_data = struct.pack(">IIBBBBB", width, height, 8, 0, 0, 0, 0)
+    ihdr = chunk(b"IHDR", ihdr_data)
+    compressor = zlib.compressobj(level=9)
+    idat_data = compressor.compress((b"\x00" * (1 + width)) * height) + compressor.flush()
+    idat = chunk(b"IDAT", idat_data)
+    iend = chunk(b"IEND", b"")
+    return header + ihdr + idat + iend
+
+
+def test_concurrent_sanitizers_do_not_mutate_or_leak_global_warnings_filters() -> None:
+    """Verifies that concurrent execution of multiple ImageSanitizers with different pixel limits
+    processing valid sprites, oversized images, and decompression bombs NEVER leaks or mutates
+    the Python process-global warnings.filters list."""
+    initial_filters = list(warnings.filters)
+    initial_filter_count = len(initial_filters)
+    initial_pil_global = Image.MAX_IMAGE_PIXELS
+
+    sprite_payload = _create_test_png(1024, 1536)  # 1.57 MP valid sprite
+    small_payload = _create_test_png(200, 200)     # 40k px
+    medium_payload = _create_test_png(600, 600)    # 360k px
+    bomb_100mp = _synthesize_fast_bomb_png(10000, 10000)  # 100MP decompression bomb
+
+    sanitizer_strict = ImageSanitizer(max_pixels=100_000)
+    sanitizer_sprite = ImageSanitizer(max_pixels=2_000_000)
+    sanitizer_default = ImageSanitizer()
+
+    errors: list[str] = []
+
+    def worker_sprite(wid: int) -> None:
+        for _ in range(5):
+            try:
+                clean = sanitizer_sprite.sanitize_image(sprite_payload)
+                if clean.size != (1024, 1536):
+                    errors.append(f"Worker {wid} bad size: {clean.size}")
+            except Exception as e:  # noqa: BLE001
+                errors.append(f"Worker {wid} failed on sprite: {e}")
+
+    def worker_strict(wid: int) -> None:
+        for _ in range(5):
+            try:
+                sanitizer_strict.validate_raw_bytes(small_payload)
+            except Exception as e:  # noqa: BLE001
+                errors.append(f"Strict worker {wid} small failed: {e}")
+
+            try:
+                sanitizer_strict.validate_raw_bytes(medium_payload)
+                errors.append(f"Strict worker {wid} accepted 360k unexpectedly")
+            except SecurityViolationError:
+                pass
+            except Exception as e:  # noqa: BLE001
+                errors.append(f"Strict worker {wid} wrong error: {e}")
+
+    def worker_bomb(wid: int) -> None:
+        for _ in range(5):
+            try:
+                sanitizer_default.validate_raw_bytes(bomb_100mp)
+                errors.append(f"Bomb worker {wid} accepted 100MP bomb unexpectedly")
+            except SecurityViolationError:
+                pass
+            except Exception as e:  # noqa: BLE001
+                errors.append(f"Bomb worker {wid} wrong error: {e}")
+
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        futures = []
+        for i in range(4):
+            futures.append(executor.submit(worker_sprite, i))
+            futures.append(executor.submit(worker_strict, i))
+            futures.append(executor.submit(worker_bomb, i))
+        for f in futures:
+            f.result()
+
+    assert not errors, f"Errors in concurrent warning-filter worker threads: {errors}"
+
+    # Verify ZERO mutation or leakage of warnings.filters
+    assert len(warnings.filters) == initial_filter_count, (
+        f"warnings.filters leaked! Initial count: {initial_filter_count}, "
+        f"Current count: {len(warnings.filters)}. Diff: {warnings.filters}"
+    )
+    assert warnings.filters == initial_filters, "warnings.filters content was mutated during concurrency!"
+    assert Image.MAX_IMAGE_PIXELS == initial_pil_global
+
+
+def test_decompression_bomb_pre_rasterization_rejection_no_warning_side_effects() -> None:
+    """Verifies that 100MP and 225MP bombs are rejected before rasterization,
+    with zero warning filter side effects and zero false rejection for 1024x1536 sprites."""
+    initial_filters = list(warnings.filters)
+    sanitizer = ImageSanitizer()
+
+    bomb_100mp = _synthesize_fast_bomb_png(10000, 10000)
+    bomb_225mp = _synthesize_fast_bomb_png(15000, 15000)
+    valid_sprite = _create_test_png(1024, 1536)
+
+    # 1. 100MP bomb rejected in validate_raw_bytes and sanitize_image without load()
+    with unittest.mock.patch.object(Image.Image, "load") as mock_load:
+        with pytest.raises(SecurityViolationError, match="Decompression bomb detected"):
+            sanitizer.validate_raw_bytes(bomb_100mp)
+        with pytest.raises(SecurityViolationError, match="Decompression bomb detected"):
+            sanitizer.sanitize_image(bomb_100mp)
+        assert mock_load.call_count == 0, "load() must never be called on 100MP bomb!"
+
+    # 2. 225MP bomb rejected without load()
+    with unittest.mock.patch.object(Image.Image, "load") as mock_load:
+        with pytest.raises(SecurityViolationError, match="Decompression bomb detected"):
+            sanitizer.validate_raw_bytes(bomb_225mp)
+        with pytest.raises(SecurityViolationError, match="Decompression bomb detected"):
+            sanitizer.sanitize_image(bomb_225mp)
+        assert mock_load.call_count == 0, "load() must never be called on 225MP bomb!"
+
+    # 3. Standard 1024x1536 character sprite passes cleanly
+    clean_sprite = sanitizer.sanitize_image(valid_sprite)
+    assert clean_sprite.size == (1024, 1536)
+    assert clean_sprite.mode == "RGBA"
+
+    # 4. warnings.filters remains exactly as before
+    assert warnings.filters == initial_filters
