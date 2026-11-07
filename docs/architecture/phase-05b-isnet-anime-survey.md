@@ -9,8 +9,9 @@
 **Commit hiệu đính & kiểm chứng R1 trên remote:** `0f9160c99823ce025738c30c70ca81280020cc8e` (Đã đẩy lên remote origin)  
 **Commit kiểm toán đối kháng Reviewer R1 trên remote:** `f8590bd97b17678aac2c05699b179711a485c06b` (Đã đẩy lên remote origin)  
 **Commit kiểm toán đối kháng Reviewer R2 trên remote:** `7949c0afe55c7c504689fc2e44d00ccf829a709f` (Đã đẩy lên remote origin)  
-**Tác giả:** worker_05b_1 (Teamwork Subagent — Proposal Report Author)  
-**Ngày lập & Cập nhật:** 07/11/2026 (Hiệu đính & Kiểm chứng Thực nghiệm R1–R5)  
+**Commit kiểm toán đối kháng Reviewer R3 trên remote:** `5c343418dee88169583d76bdded1792b8dc844d6` (Đã đẩy lên remote origin)  
+**Tác giả:** worker_05b_2 (Teamwork Subagent — Final Documentation Implementer)  
+**Ngày lập & Cập nhật:** 07/11/2026 (Hiệu đính Cuối cùng R1–R5 Chuẩn hóa Toàn diện)  
 **Chế độ tuân thủ:** Integrity Mode Development — Cam kết trung thực tuyệt đối, không gian lận, không giả lập kết quả.
 
 ---
@@ -26,7 +27,7 @@
    - 2.5 Chuẩn hóa Canvas (`SpriteNormalizer`) và Đo lường Độ lệch (`DriftVerificationEngine`)
    - 2.6 Cổng Kiểm soát Chất lượng Tổng hợp (`CQSQualityGate`) và Lọc Trùng lặp
    - 2.7 Tính Bất biến Lưu trữ Nguyên tử và Cô lập Trạng thái Khách (`READY Invariant`)
-   - 2.8 Hiện trạng Bộ Kiểm thử Cơ sở (218/218 Tests Passing)
+   - 2.8 Hiện trạng Bộ Kiểm thử Cơ sở (218/218 Tests Passing - Pipeline Core & Mock)
 3. [NGUỒN GỐC MÔ HÌNH, BẢN QUYỀN & XÁC MINH MÃ HÓA (R1 Model Provenance, Licensing & Pinning)](#3-ngu%E1%BB%93n-g%E1%BB%91c-m%C3%B4-h%C3%ACnh-b%E1%BA%A3n-quy%E1%BB%81n--x%C3%A1c-minh-m%C3%A3-h%C3%B3a)
    - 3.1 Nguồn gốc Học thuật: IS-Net và Bộ dữ liệu DIS5K (ECCV 2022)
    - 3.2 Tinh chỉnh Chuyên biệt Cho Anime: SkyTNT (`anime-segmentation`)
@@ -52,13 +53,13 @@
    - 5.4 Ghi log Thiết bị Hoạt động và Metadata Chẩn đoán
    - 5.5 Phân loại Số liệu Hiệu năng (Nhóm A / B / C) & Kế hoạch Benchmark DirectML trên RTX 4050 6GB
    - 5.6 Vòng đời Phiên Thực thi, Khởi tạo Lười (Lazy Loading) và Kiểm soát Đồng thời
-   - 5.7 Cơ chế Phục hồi Tường minh khi Tràn Bộ nhớ Đồ họa (GPU OOM to CPU Fallback)
+   - 5.7 Đề Xuất Thiết Kế Cơ Chế Phục Hồi khi Tràn Bộ Nhớ Đồ Họa (Proposed GPU OOM to CPU Fallback - Chưa Triển Khai)
    - 5.8 Bảo tồn Tính Trừu tượng và Nhà cung cấp Giả lập Cho Môi trường CI
 6. [KẾ HOẠCH KIỂM THỬ ĐA TẦNG & CỔNG CHẤT LƯỢNG (R4 Multi-Tier Test Plan & Quality Gate)](#6-k%E1%BA%BF-ho%E1%BA%A1ch-ki%E1%BB%83m-th%E1%BB%AD-%C4%91a-t%E1%BA%A7ng)
-   - 6.1 Tầng 1: Kiểm thử Đơn vị với Mock Provider (Đã Chạy & Vượt Qua)
-   - 6.2 Tầng 2: Kiểm thử Tích hợp CPU ONNX với Mô hình Nhân tạo 2KB (Kế hoạch Triển khai)
-   - 6.3 Tầng 3: Kiểm thử Tích hợp Mô hình Thực IS-Net trên CPU (Kế hoạch Triển khai)
-   - 6.4 Tầng 4: Kiểm thử Phần cứng DirectML GPU trên Windows (Kế hoạch Triển khai)
+   - 6.1 Tầng 1: Kiểm thử Đơn vị với Mock Provider (Đã Chạy & Vượt Qua - RUN)
+   - 6.2 Tầng 2: Kiểm thử Tích hợp CPU ONNX với Mô hình Nhân tạo 2KB (Chưa Chạy - NOT RUN)
+   - 6.3 Tầng 3: Kiểm thử Tích hợp Mô hình Thực IS-Net trên CPU (Chưa Chạy - NOT RUN)
+   - 6.4 Tầng 4: Kiểm thử Phần cứng DirectML GPU trên Windows (Chưa Chạy - NOT RUN)
 7. [RỦI RO KỸ THUẬT, CÁC CHẾ ĐỘ THẤT BẠI & BIỆN PHÁP GIẢM THIỂU](#7-r%E1%BB%A7i-ro-k%E1%BB%B9-thu%E1%BA%ADt-c%C3%A1c-ch%E1%BA%BF-%C4%91%E1%BB%99-th%E1%BA%A5t-b%E1%BA%A1i--bi%E1%BB%87n-ph%C3%A1p-gi%E1%BA%A3m-thi%E1%BB%83u)
 8. [DANH MỤC TỆP DỰ KIẾN, LỘ TRÌNH TRIỂN KHAI & XÁC MINH GIT REMOTE (R5 Git Verification)](#8-danh-m%E1%BB%A5c-t%E1%BB%87p-d%E1%BB%B1-ki%E1%BA%BFn--l%E1%BB%99-tr%C3%ACnh-tri%E1%BB%83n-khai-cho-phase-05b)
    - 8.1 Danh mục Tệp Dự kiến
@@ -70,7 +71,7 @@
 
 ## 1. TỔNG QUAN KIẾN TRÚC & TÓM TẮT ĐIỀU HÀNH
 
-Mục tiêu kỹ thuật cốt lõi của **Phase 0.5B** là nâng cấp hệ thống xử lý sprite nhân vật Hatsune Miku từ việc sử dụng thuật toán giả lập cắt nền heuristic (`MockBackgroundRemovalProvider`) sang mô hình AI chuyên dụng tách nền anime hiện đại nhất hiện nay: **IS-Net Anime** (Dichotomous Image Segmentation fine-tuned for Anime), vận hành thông qua runtime mở rộng phần cứng **ONNX Runtime với DirectML** trên hệ điều hành Windows (tương thích toàn diện card đồ họa NVIDIA, AMD, Intel qua DirectX 12) và tự động rơi về **CPUExecutionProvider** một cách trơn tru, tin cậy tuyệt đối khi máy tính không có GPU chuyên dụng.
+Mục tiêu kỹ thuật cốt lõi của **Phase 0.5B** là nâng cấp hệ thống xử lý sprite nhân vật Hatsune Miku từ việc sử dụng thuật toán giả lập cắt nền heuristic (`MockBackgroundRemovalProvider`) sang mô hình AI chuyên dụng tách nền anime hiện đại: **IS-Net Anime** (Dichotomous Image Segmentation fine-tuned for Anime), vận hành thông qua runtime mở rộng phần cứng **ONNX Runtime với DirectML** trên hệ điều hành Windows (tương thích các dòng card đồ họa NVIDIA, AMD, Intel qua DirectX 12) và đề xuất thiết kế cơ chế dự phòng tự động chuyển sang **CPUExecutionProvider** khi máy tính không có GPU chuyên dụng hoặc gặp sự cố khởi tạo runtime (thiết kế kiến trúc đề xuất cho Phase 0.5B, chưa được triển khai hay kiểm thử trong codebase hiện tại).
 
 ### Sơ đồ Khái niệm Luồng Xử lý Toàn tuyến (End-to-End Pipeline Overview)
 
@@ -132,7 +133,7 @@ Mục tiêu kỹ thuật cốt lõi của **Phase 0.5B** là nâng cấp hệ th
 1. **Tuân thủ Tuyệt đối Hợp đồng Hiện hữu:** Giữ nguyên vẹn Protocol `BackgroundRemovalProvider` và lớp `MockBackgroundRemovalProvider`. Bộ kiểm thử CI và môi trường phát triển ngoại tuyến tiếp tục chạy 100% không phụ thuộc mô hình nặng hay GPU.
 2. **Bảo mật Chuỗi cung ứng (Supply Chain Security):** Áp dụng kiến trúc **BYOM (Bring-Your-Own-Model)**. Không đóng gói kèm file nhị phân mô hình trong kho mã nguồn Git. Mô hình chỉ được nạp sau khi vượt qua thuật toán kiểm tra mã băm mật mã **SHA-256 dạng luồng (streaming)** trước khi chuyển cho runtime ONNX. Tuyệt đối nghiêm cấm việc tự ý tải mô hình từ mạng khi `import` module hoặc khi ứng dụng khởi động.
 3. **Chất lượng Tách Viền Đỉnh cao cho Phong cách Anime:** Sử dụng kỹ thuật đệm khung (letterboxing) giữ nguyên tỷ lệ khung hình thực, không kéo giãn làm biến dạng giải phẫu nhân vật Miku; tạo dải alpha mềm liên tục $A \in [0.05, 0.95]$ để bắt trọn từng sợi tóc mai (ahoge), phụ kiện nơ bay, vòng hào quang tóc (angel rings) và khăn voan bán trong suốt; tích hợp 4 cổng kiểm soát chất lượng mặt nạ đầu ra để loại bỏ hoàn toàn các trường hợp ảnh đen/trắng bất thường.
-4. **Khả năng Chịu lỗi Phần cứng Vượt trội:** Cô lập lỗi khởi tạo DirectML bằng khối try-catch hai giai đoạn (khởi tạo phiên và suy luận khởi động `warmup`). Bất kỳ sự cố nào về DirectX 12 driver, thiếu tính năng phần cứng, hoặc cạn kiệt VRAM đều tự động chuyển dịch an toàn sang CPU đa luồng mà không làm sập tiến trình ngầm (worker process).
+4. **Đề Xuất Thiết Kế Dự Phòng Phần Cứng (Proposed Fallback Design):** Đề xuất thiết kế cô lập lỗi khởi tạo DirectML bằng khối try-catch hai giai đoạn (khởi tạo phiên và suy luận khởi động `warmup`). Khi phát hiện sự cố thiếu tính năng phần cứng hoặc lỗi DirectML có thể bắt được, hệ thống đề xuất chuyển sang CPU đa luồng. *Lưu ý phân định quan trọng:* Cơ chế này hiện là **đề xuất thiết kế kiến trúc cho Phase 0.5B, CHƯA ĐƯỢC TRIỂN KHAI hay kiểm chứng trong codebase hiện tại**; không bảo đảm mọi lỗi driver DirectX 12 hoặc tràn bộ nhớ VRAM đều có thể khôi phục an toàn (các lỗi phần cứng nghiêm trọng, TDR reset hoặc cạn kiệt RAM hệ thống vẫn có thể làm dừng worker).
 
 ---
 
@@ -249,15 +250,19 @@ Tiến trình xử lý một tác vụ nhân vật (`process_task`) đi qua chu�
   - Kể cả tại nhánh dự phòng mặc định cuối cùng (Level 5 `default_fallback`), nếu asset được chọn không ở trạng thái `ready`, hệ thống lập tức ném ngoại lệ `DefaultAssetNotReadyError`.
   - Các tài sản ở trạng thái `needs_review`, `pending`, `processing`, `failed`, hoặc `rejected` tuyệt đối không bao giờ bị lộ ra giao diện người dùng.
 
-### 2.8 Hiện trạng Bộ Kiểm thử Cơ sở (218/218 Tests Passing)
+### 2.8 Hiện trạng Bộ Kiểm thử Cơ sở (218/218 Tests Passing - Pipeline Core & Mock)
 Hệ thống hiện sở hữu **218 bài kiểm thử tự động**, chia thành:
 - 149 bài kiểm thử chuyên sâu cho toàn bộ pipeline (`backend/tests/pipeline/`).
 - 15 bài kiểm thử bất biến cho bộ phân giải tài nguyên nhân vật (`backend/tests/domain/`).
 - 54 bài kiểm thử nền tảng và kho lưu trữ SQLite/JSON (`backend/tests/`).
 - Kết quả kiểm chứng thực tế tại thời điểm khảo sát:
-  - `pytest`: **218 passed** trong 42.14 giây (100% offline, không có lỗi).
+  - `pytest`: **218 passed** trong 37.04 giây (100% offline, không có lỗi).
   - `ruff check .`: **All checks passed** (0 cảnh báo linting).
   - `mypy app tests`: **Success: no issues found in 72 source files** (Kiểm tra kiểu tĩnh nghiêm ngặt).
+
+> **CẢNH BÁO PHÂN ĐỊNH PHẠM VI KIỂM THỬ (TEST SCOPE BOUNDARY):**  
+> Kết quả 218/218 bài kiểm thử vượt qua này **thuần túy là kiểm thử cho bộ khung Pipeline Core (Task 0.5A) sử dụng bộ tách nền giả lập `MockBackgroundRemovalProvider`**.  
+> Kết quả này **TUYỆT ĐỐI KHÔNG CHỨNG MINH RẰNG MÔ HÌNH AI IS-NET THỰC TẾ HAY PROVIDER DIRECTML ĐÃ HOẠT ĐỘNG** trong hệ thống. Mô hình thực tế và runtime DirectML chưa được tích hợp mã nguồn hay chạy kiểm thử trong codebase hiện tại.
 
 ---
 
@@ -288,7 +293,7 @@ Trọng số mô hình `isnetis.onnx` của SkyTNT hiện đã trở thành chu�
 
 ### 3.4 Ma trận Kiểm toán Bản quyền Đa tầng, Bằng chứng Tác giả & Phân tích Rủi ro Pháp lý
 
-Để bảo đảm tính minh bạch pháp lý tuyệt đối cho Project AIC, hệ thống phân định rạch ròi 3 tầng bản quyền độc lập: **Mã nguồn (Source Code)**, **Trọng số mô hình (Model Weights)**, và **Tập dữ liệu huấn luyện (Training Dataset)**:
+Để bảo đảm tính minh bạch pháp lý cho Project AIC, hệ thống phân định rạch ròi 3 tầng bản quyền độc lập: **Mã nguồn (Source Code)**, **Trọng số mô hình (Model Weights)**, và **Tập dữ liệu huấn luyện (Training Dataset)**:
 
 | Tầng (Layer) | Thành phần Cụ thể | Giấy phép Khai báo | Nguồn Chứng thực Khách quan | Đánh giá Khả năng Sử dụng Thương mại |
 |---|---|---|---|---|
@@ -298,7 +303,7 @@ Trọng số mô hình `isnetis.onnx` của SkyTNT hiện đã trở thành chu�
 | **Trọng số (Weights)** | `skytnt/anime-seg` (`isnetis.onnx`) | **Apache-2.0** | Commit `493cb60893f47441b26ec4fb9a306bce9e342982` trên Hugging Face | **HỢP LỆ** (Chính tác giả SkyTNT xác nhận và cấp phép Apache-2.0) |
 | **Tập dữ liệu (Dataset)**| SkyTNT Anime Dataset | **CC0-1.0 Universal** | Thẻ Dataset Card trên Hugging Face | **HỢP LỆ** (Hiến tặng phạm vi công cộng Public Domain) |
 | **Tập dữ liệu (Dataset)**| DIS5K (`xuebinqin/DIS`) | **Phi thương mại tùy biến (NC)**| `DIS5K-Dataset-Terms-of-Use.pdf` | **CHỈ HỌC THUẬT** (Ràng buộc phi thương mại đối với tệp dữ liệu gốc) |
-| **Tập dữ liệu (Dataset)**| Tranh anime gốc trên internet | **Bản quyền tác giả gốc** | Web scraping Danbooru/Pixiv | **Ngoại lệ Đào tạo AI** (Fair Use Hoa Kỳ §107, Đạo luật Bản quyền Nhật Bản Điều 30-4) |
+| **Tập dữ liệu (Dataset)**| Tranh anime gốc trên internet | **Bản quyền tác giả gốc** | Web scraping Danbooru/Pixiv | **Cần đánh giá pháp lý theo tài phán** (Có thể lập luận theo Fair Use Hoa Kỳ §107 hoặc Điều 30-4 Luật Bản quyền Nhật Bản nhưng chưa đồng nhất giữa các quốc gia và còn tranh chấp) |
 
 #### Bằng chứng Khách quan Về Giấy phép Apache-2.0 Của Trọng số Mô hình:
 Quá trình kiểm toán kho lưu trữ Hugging Face chính thức [`skytnt/anime-seg`](https://huggingface.co/skytnt/anime-seg) đã ghi nhận bằng chứng cam kết pháp lý tường minh từ chính tác giả:
@@ -306,17 +311,24 @@ Quá trình kiểm toán kho lưu trữ Hugging Face chính thức [`skytnt/anim
 2. **Metadata YAML Frontmatter:** Tệp `README.md` của repo được cập nhật thẻ chuẩn `license: apache-2.0`.
 3. **Model Card Tags:** API metadata của Hugging Face (`/api/models/skytnt/anime-seg`) xác nhận thuộc tính `cardData.license = "apache-2.0"` và danh mục `tags` chứa định danh công khai `"license:apache-2.0"`.
 
-#### Phân tích Pháp lý Chuyên sâu: Điều khoản Phi thương mại của Dataset không tự động lây nhiễm lên Trọng số:
-Một mối quan ngại thường gặp là liệu điều khoản phi thương mại (Non-Commercial) của bộ dữ liệu DIS5K gốc có "lây nhiễm" sang trọng số mô hình `isnetis.onnx` do SkyTNT tinh chỉnh hay không. Căn cứ trên học thuyết bản quyền và án lệ quốc tế hiện hành:
-1. **Bản chất Số học của Trọng số:** Trọng số mạng nơ-ron là các ma trận số thực dấu phẩy động (`float32`) đại diện cho các tham số hàm số toán học thu được qua quá trình tối ưu hóa hàm mất mát (loss optimization). Trọng số không chứa đựng bản sao chép từng phần hay toàn phần của các bức ảnh đầu vào trong tập dữ liệu.
-2. **Không Có Tính Lây nhiễm Tự động (No Automatic Flow-Through):** Theo hướng dẫn của Văn phòng Bản quyền Hoa Kỳ (US Copyright Office), Điều 30-4 Đạo luật Bản quyền Nhật Bản (cho phép khai thác tác phẩm phục vụ phân tích thông tin/đào tạo AI phi bản quyền), và Chỉ thị DSM của Liên minh Châu Âu (EU Directive on Copyright in the Digital Single Market - Điều 3 & 4 về Text and Data Mining): việc huấn luyện mô hình học máy được xem là hành vi trích xuất đặc trưng thống kê phi biểu đạt (non-expressive use). Do đó, các điều khoản hạn chế phi thương mại ràng buộc việc tiếp cận và sao chép chính tập dữ liệu DIS5K **không tự động biến trọng số của mô hình được huấn luyện thành tác phẩm phái sinh (derivative work) bị hạn chế tương tự**, trừ khi người huấn luyện ký kết một hợp đồng dân sự mang tính cam kết trực tiếp (privity of contract) ràng buộc chuyển giao quyền đối với sản phẩm đầu ra.
-3. **Giới hạn Kết luận Pháp lý (Legal Guardrail):** Báo cáo này ghi nhận các bằng chứng kỹ thuật và cơ sở lý luận học thuật nêu trên, nhưng **tuyệt đối không đưa ra kết luận pháp lý tài phán tối hậu** thay thế cho ý kiến tư vấn từ luật sư sở hữu trí tuệ chuyên nghiệp. Bất kỳ tổ chức nào phân phối sản phẩm thương mại quy mô lớn đều cần thực hiện đánh giá pháp lý độc lập theo thẩm quyền tài phán của mình.
+#### Phân tích Pháp lý: Điều khoản Phi thương mại của Dataset và Giới hạn Lây nhiễm lên Trọng số:
+Một mối quan ngại thường gặp trong cộng đồng là liệu điều khoản phi thương mại (Non-Commercial) của bộ dữ liệu DIS5K gốc có "lây nhiễm" sang trọng số mô hình `isnetis.onnx` do SkyTNT tinh chỉnh hay không. Dưới góc độ phân tích pháp lý và kỹ thuật:
+1. **Bản chất Số học của Trọng số:** Trọng số mạng nơ-ron là các ma trận số thực dấu phẩy động (`float32`) đại diện cho các tham số hàm số toán học thu được qua quá trình tối ưu hóa hàm mất mát (loss optimization). Trọng số không chứa đựng bản sao chép trực tiếp từng phần hay toàn phần của các bức ảnh đầu vào trong tập dữ liệu.
+2. **Điều khoản NC của Dataset không tự động trở thành Giấy phép của Trọng số:** Về nguyên lý bản quyền, các điều khoản hạn chế phi thương mại ràng buộc việc tiếp cận, tải về và phân phối chính tập dữ liệu DIS5K không tự động biến đổi thành giấy phép bản quyền của trọng số mô hình được đào tạo như một tác phẩm phái sinh (derivative work), trừ khi người đào tạo có thỏa thuận hợp đồng trực tiếp (privity of contract) ràng buộc quyền đối với kết quả đầu ra.
+3. **Các Lập luận Pháp lý và Giới hạn Bắt buộc (Qualified Legal Analysis):**
+   - Một số quan điểm pháp lý lập luận rằng việc đào tạo AI là hành vi trích xuất đặc trưng thống kê phi biểu đạt (non-expressive use) được bảo vệ bởi học thuyết Fair Use (Hoa Kỳ §107), Điều 30-4 Đạo luật Bản quyền Nhật Bản (cho phép khai thác tác phẩm phục vụ phân tích thông tin), hoặc các ngoại lệ Khai thác Văn bản và Dữ liệu (TDM) theo Chỉ thị Bản quyền Thị trường Số Đơn nhất của EU (Chỉ thị DSM, Điều 3 & 4).
+   - **Tuy nhiên, đây KHÔNG PHẢI là kết luận pháp lý tuyệt đối hay phổ quát:** Án lệ và khung pháp lý điều chỉnh việc sử dụng dữ liệu có bản quyền để huấn luyện AI trên toàn cầu vẫn đang trong quá trình định hình, liên tục phát sinh tranh chấp và kiện tụng chưa có hồi kết tại nhiều khu vực tài phán. Ngoại lệ TDM của EU cho phép chủ sở hữu quyền tuyên bố bảo lưu quyền (opt-out), và phạm vi áp dụng Fair Use tại Hoa Kỳ đối với các tác vụ thị giác máy tính vẫn có thể bị xem xét lại tùy theo bối cảnh thương mại cụ thể.
+4. **Yêu cầu Bắt buộc về Đánh giá Pháp lý Thương mại (Commercial Legal Review Requirement):**
+   - Báo cáo này ghi nhận các bằng chứng kỹ thuật và phân tích học thuật nêu trên nhằm phục vụ định hướng kiến trúc, **tuyệt đối không đưa ra kết luận pháp lý tài phán tối hậu** thay thế cho ý kiến tư vấn từ luật sư chuyên trách sở hữu trí tuệ.
+   - **Bất kỳ kế hoạch phân phối thương mại (commercial distribution) nào trong tương lai đều bắt buộc phải trải qua quy trình rà soát và đánh giá pháp lý độc lập** theo luật định tại các thị trường phát hành mục tiêu.
 
-### 3.5 Chiến lược Kiến trúc "Bring-Your-Own-Model" (BYOM)
-Để cách ly hoàn toàn Project AIC khỏi mọi tranh chấp bản quyền hoặc rủi ro pháp lý tiềm ẩn:
-1. **Không phân phối kèm file nhị phân mô hình trong kho mã nguồn Git hoặc file cài đặt wheel.** Kho lưu trữ của Project AIC chỉ lưu trữ mã nguồn Python mở tuân thủ hợp đồng và thuật toán xác minh.
-2. **Cơ chế BYOM:** Người dùng hoặc quản trị viên hệ thống là người chủ động đặt tệp mô hình vào thư mục `data/models/isnet-anime.onnx` hoặc chạy lệnh CLI công khai để tải về, chấp nhận các điều khoản của bên thứ ba một cách độc lập.
-3. **Tính tương thích với các mô hình thương mại thay thế:** Kiến trúc `BackgroundRemovalProvider` cho phép cắm ghép (pluggable) bất kỳ mô hình nào khác có bản quyền thương mại 100% trong tương lai (ví dụ: BRIA RMBG 1.4/2.0 hoặc BiRefNet) mà không phải sửa đổi một dòng mã nguồn nào của luồng điều phối Worker.
+### 3.5 Chiến lược Kiến trúc "Bring-Your-Own-Model" (BYOM) & Giới Hạn Pháp Lý
+Nhằm giảm thiểu rủi ro trực tiếp trong phân phối mã nguồn và tách biệt trách nhiệm quản trị file nhị phân:
+1. **Không phân phối kèm file nhị phân mô hình trong kho mã nguồn Git hoặc gói cài đặt:** Kho lưu trữ của Project AIC chỉ lưu trữ mã nguồn Python tuân thủ hợp đồng và thuật toán xác minh.
+2. **Cơ chế BYOM (Bring-Your-Own-Model):** Người dùng hoặc quản trị viên hệ thống chủ động cung cấp tệp mô hình vào thư mục `data/models/isnet-anime.onnx` hoặc chạy lệnh CLI tường minh để tải về, tự chịu trách nhiệm rà soát và tuân thủ các điều khoản cấp phép của bên thứ ba.
+3. **Giới hạn của Chiến lược BYOM:** Cần khẳng định rõ ràng rằng **chiến lược BYOM KHÔNG loại bỏ hoàn toàn mọi rủi ro về bản quyền hay cấp phép (does NOT eliminate all copyright or licensing risks)**, đặc biệt khi hệ thống được đóng gói, phân phối thương mại hoặc cung cấp dưới dạng dịch vụ. BYOM chỉ là biện pháp phòng vệ kiến trúc nhằm tách rời việc phân phối mã nguồn khỏi việc phân phối trọng số nhị phân.
+4. **Phân phối thương mại vẫn yêu cầu đánh giá pháp lý:** Việc phân phối thương mại hệ thống vẫn đòi hỏi đánh giá pháp lý thích hợp từ chuyên gia sở hữu trí tuệ độc lập.
+5. **Tính tương thích với các mô hình thương mại thay thế:** Giao diện `BackgroundRemovalProvider` cho phép cắm ghép (pluggable) bất kỳ mô hình nào khác có chứng nhận thương mại 100% trong tương lai (ví dụ: BRIA RMBG 1.4/2.0 hoặc BiRefNet) mà không phải sửa đổi luồng điều phối của Worker.
 
 ### 3.6 Ghim Phiên bản Ổn định Hugging Face, Thông số Kỹ thuật & Dấu vân tay Mật mã SHA-256
 
@@ -768,7 +780,7 @@ class OnnxBackgroundRemovalProvider(BackgroundRemovalProvider):
       self._init_session_sync()
 
   def _init_session_sync(self) -> None:
-    """Khởi tạo phiên đồng bộ với cơ chế dự phòng an toàn tuyệt đối."""
+    """Khởi tạo phiên đồng bộ với thiết kế đề xuất cơ chế dự phòng hai tầng (chưa triển khai)."""
     model_file = Path(
         getattr(
             self.config, "isnet_anime_model_path", "data/models/isnet-anime.onnx"
@@ -937,12 +949,14 @@ Nhằm duy trì tính trung thực tuyệt đối theo chế độ `Integrity Mo
 
 | Nhóm Phân Loại | Định Nghĩa Tiêu Chuẩn | Các Chỉ Số / Tuyên Bố Kỹ Thuật Cụ Thể | Bằng Chứng / Phương Pháp Xác Minh |
 |---|---|---|---|
-| **Nhóm A: Thực nghiệm Đã Đo Kiểm Thực Tế (Actually Measured)** | Các số liệu đã được đo kiểm trực tiếp trên máy phát triển hoặc bộ kiểm thử tự động của Project AIC. | - Thời gian chạy toàn bộ test suite cơ sở: **42.14 giây cho 218/218 tests passing** (100% offline trên CPU).<br>- Kích thước tệp nhị phân trọng số: **176,069,933 bytes** (~176.07 MB).<br>- RAM nền cơ sở của Mock Provider: **~50 MB**.<br>- Sai số bảo toàn hình học đệm khung khứ hồi: **$\le 0.081\text{ px}$** trên 17 kích thước ảnh. | Nhật ký thực thi `pytest`, kiểm toán nhị phân SHA-256 tệp `isnetis.onnx`, và bài test hình học `test_normalizer_alignment.py`. |
-| **Nhóm B: Ước Lượng Từ Lý Thuyết & Tài Liệu Kiến Trúc (Estimated from Literature/Architecture)** | Các số liệu suy diễn từ cấu trúc mạng nơ-ron IS-Net, đặc tả bộ đệm tensor ONNX Runtime, hoặc tài liệu công bố của các dự án tiền nhiệm (`rembg`, `anime-segmentation`). | - Dung lượng VRAM đồ họa đỉnh khi suy luận $1024 \times 1024$: **~750 MB – 1,100 MB** (tính từ: trọng số FP32 176 MB + tensor ảnh đầu vào NCHW 12.6 MB + bộ đệm kích hoạt trung gian đỉnh qua 6 tầng RSU Encoder-Decoder ~450 MB + workspace DirectML).<br>- Dung lượng RAM hệ thống khi chạy CPU: **~300 MB – 700 MB**.<br>- Độ trễ suy luận trên CPU: **~1.2s – 3.5s** (tùy số nhân CPU và số luồng OpenMP). | Tính toán kích thước ma trận tensor toán học và đối chiếu tài liệu kỹ thuật của Microsoft DirectML / ONNX Runtime C++ Core. |
-| **Nhóm C: Giả Thuyết Chưa Được Kiểm Chứng Trên Môi Trường Mục Tiêu (Unverified Hypothesis)** | Các kỳ vọng kỹ thuật về phần cứng mục tiêu hoặc tính năng nâng cao chưa qua đo kiểm thực tế trong môi trường Windows với GPU NVIDIA RTX 4050. | - Độ trễ suy luận trên Windows với GPU NVIDIA RTX 4050 6GB qua DirectML đạt **~0.2s (150–250 ms)**.<br>- Khả năng giải phóng tức thì về đúng **0 MB VRAM** ngay sau khi gọi hàm `release()` (trình điều khiển DirectX 12 và DirectML allocator thường duy trì bộ nhớ đệm heap đã cấp phát cho tới khi tiến trình kết thúc hoặc OS thu hồi).<br>- Khả năng tự động chuyển dịch êm ái sang CPU ngay giữa luồng suy luận khi GPU bị OOM mà không làm gián đoạn worker. | Cần thực thi bộ benchmark chuyên biệt trên phần cứng thực tế trong giai đoạn triển khai Phase 0.5B để chuyển sang Nhóm A. |
+| **Nhóm A: Thực nghiệm Đã Đo Kiểm Thực Tế (Actually Measured)** | Các số liệu đã được đo kiểm trực tiếp trên máy phát triển hoặc bộ kiểm thử tự động của Project AIC. | - Thời gian chạy test suite Pipeline Core cơ sở: **218/218 tests passing** (100% offline trên CPU, áp dụng riêng cho Pipeline Core với `MockBackgroundRemovalProvider`; **tuyệt đối KHÔNG chứng minh mô hình IS-Net thực tế hay DirectML hoạt động**).<br>- Kích thước tệp nhị phân trọng số: **176,069,933 bytes** (~176.07 MB).<br>- RAM nền cơ sở của Mock Provider: **~50 MB**.<br>- Sai số bảo toàn hình học đệm khung khứ hồi: **$\le 0.081\text{ px}$** trên 17 kích thước ảnh. | Nhật ký thực thi `pytest`, kiểm toán nhị phân SHA-256 tệp `isnetis.onnx`, và bài test hình học `test_normalizer_alignment.py`. |
+| **Nhóm B: Ước Lượng Từ Lý Thuyết & Tài Liệu Kiến Trúc (Estimated from Literature/Architecture)** | Các số liệu suy diễn từ cấu trúc mạng nơ-ron IS-Net, đặc tả bộ đệm tensor ONNX Runtime, hoặc tài liệu công bố của các dự án tiền nhiệm (`rembg`, `anime-segmentation`). **(Ước lượng chưa đo kiểm thực tế)** | - Dung lượng VRAM đồ họa đỉnh khi suy luận $1024 \times 1024$: **ước tính ~750 MB – 1,100 MB** (tính từ: trọng số FP32 176 MB + tensor ảnh đầu vào NCHW 12.6 MB + bộ đệm kích hoạt trung gian đỉnh qua 6 tầng RSU Encoder-Decoder ~450 MB + workspace DirectML; đây là ước tính lý thuyết, chưa đo kiểm thực tế).<br>- Dung lượng RAM hệ thống khi chạy CPU: **ước tính ~300 MB – 700 MB**.<br>- Độ trễ suy luận trên CPU: **ước tính ~1.2s – 3.5s** (tùy số nhân CPU và số luồng OpenMP). | Tính toán kích thước ma trận tensor toán học và đối chiếu tài liệu kỹ thuật của Microsoft DirectML / ONNX Runtime C++ Core. |
+| **Nhóm C: Giả Thuyết Chưa Được Kiểm Chứng Trên Môi Trường Mục Tiêu (Unverified Hypothesis)** | Các kỳ vọng kỹ thuật về phần cứng mục tiêu hoặc tính năng nâng cao chưa qua đo kiểm thực tế trong môi trường Windows với GPU NVIDIA RTX 4050. | - Độ trễ suy luận trên Windows với GPU NVIDIA RTX 4050 6GB qua DirectML: **ước tính/giả thuyết thiết kế ~0.2s (150–250 ms)** (hoàn toàn chưa kiểm chứng thực nghiệm).<br>- Thu hồi bộ nhớ VRAM sau khi gọi `release()`: **VRAM KHÔNG được giải phóng về đúng 0 MB ngay lập tức**. Do cơ chế memory pooling của trình điều khiển DirectX 12 và DirectML allocator, bộ nhớ đồ họa heap đã cấp phát thường được driver/OS duy trì cho tới khi tiến trình kết thúc. Do đó, tuyệt đối không tuyên bố VRAM được giải phóng về đúng 0 MB.<br>- Khả năng chuyển dịch sang CPU khi GPU bị OOM: **Đề xuất thiết kế kiến trúc chưa được lập trình hay kiểm thử trong codebase**; không bảo đảm mọi lỗi DirectML OOM/device errors đều có thể phục hồi an toàn. | Cần thực thi bộ benchmark chuyên biệt trên phần cứng thực tế trong giai đoạn triển khai Phase 0.5B để chuyển sang Nhóm A. |
 
-> **CẢNH BÁO QUAN TRỌNG:**  
-> Tuyệt đối **KHÔNG ĐƯỢC PHÉP** trình bày các số liệu thuộc **Nhóm B** (Ước lượng lý thuyết) và **Nhóm C** (Giả thuyết thiết kế) như những kết quả thực nghiệm đã được kiểm chứng! Các con số ~0.2s và ~1 GB VRAM chỉ là mục tiêu thiết kế và ước tính kiến trúc, sẽ được đo kiểm nghiêm ngặt theo kế hoạch benchmark dưới đây.
+> **CẢNH BÁO QUAN TRỌNG VỀ PHÂN ĐỊNH HIỆU NĂNG:**  
+> 1. Kết quả **218 tests passing** của Nhóm A thuộc về bộ khung Pipeline Core chạy Mock Provider; **kết quả này KHÔNG chứng minh mô hình IS-Net thực tế hay provider DirectML đã hoạt động**.  
+> 2. Tuyệt đối **KHÔNG ĐƯỢC PHÉP** trình bày các số liệu thuộc **Nhóm B** (Ước lượng lý thuyết) và **Nhóm C** (Giả thuyết thiết kế) như những kết quả thực nghiệm đã được kiểm chứng! Con số ~0.2s và dung lượng VRAM/RAM thuần túy là mục tiêu thiết kế và ước tính kiến trúc chưa qua đo kiểm.  
+> 3. Tuyệt đối **KHÔNG TUYÊN BỐ VRAM được giải phóng về đúng 0 MB** sau khi gọi hàm `release()`.
 
 #### Kế hoạch Benchmark DirectML Chuyên Biệt Trên Windows (NVIDIA RTX 4050 6GB):
 Nhằm cung cấp bằng chứng thực nghiệm chính xác, một kịch bản đo kiểm chuẩn hóa được thiết kế riêng cho máy tính Windows trang bị card đồ họa **NVIDIA GeForce RTX 4050 Laptop GPU (6 GB GDDR6)**:
@@ -954,14 +968,14 @@ Nhằm cung cấp bằng chứng thực nghiệm chính xác, một kịch bản
   4. **Peak VRAM Usage (Bộ nhớ đồ họa đỉnh):** Đo thông qua NVML API (`pynvml`) và bộ đếm hiệu năng DirectX DXGI tại 4 mốc: Trước khi nạp, Sau warmup, Tại đỉnh suy luận ảnh phức tạp, và Sau khi kết thúc tác vụ.
   5. **System RAM Usage (Bộ nhớ RAM hệ thống):** Giám sát chỉ số Resident Set Size (RSS) của tiến trình worker qua `psutil` xuyên suốt các giai đoạn.
   6. **Sequential Image Processing (Xử lý chuỗi ảnh liên tục):** Xử lý tuần tự 20 ảnh sprite Miku liên tiếp, kiểm tra đồ thị bộ nhớ để phát hiện rò rỉ bộ nhớ (memory leaks) hoặc hiện tượng tích tụ bộ đệm DirectML.
-  7. **Release and Reload Lifecycle (Vòng đời giải phóng và nạp lại):** Gọi `provider.release()`, đo lượng VRAM và RAM được trả lại cho hệ điều hành, sau đó gửi yêu cầu tách nền mới để kiểm tra tính năng tái khởi tạo phiên làm việc (lazy re-initialization).
-  8. **DirectML Failure with CPU Fallback (Thử nghiệm ép lỗi DirectML và chuyển sang CPU):** Giả lập lỗi thiết bị phần cứng (truyền sai `device_id=999` hoặc tắt thiết bị DirectX 12), đo thời gian phát hiện lỗi, thời gian khởi tạo phiên CPU dự phòng và kiểm tra tính toàn vẹn của ảnh đầu ra.
+  7. **Release and Reload Lifecycle (Vòng đời giải phóng và nạp lại):** Gọi `provider.release()`, đo lượng VRAM và RAM thực tế được hoàn trả cho hệ điều hành (lưu ý driver DirectX 12 có thể giữ lại bộ đệm heap, không cam kết giải phóng về 0 MB), sau đó gửi yêu cầu tách nền mới để kiểm tra tính năng tái khởi tạo phiên làm việc (lazy re-initialization).
+  8. **DirectML Failure with CPU Fallback (Thử nghiệm ép lỗi DirectML và chuyển sang CPU):** Giả lập lỗi thiết bị phần cứng (truyền sai `device_id=999` hoặc tắt thiết bị DirectX 12), đo thời gian phát hiện lỗi, thời gian khởi tạo phiên CPU dự phòng và kiểm tra tính toàn vẹn của ảnh đầu ra (kiểm nghiệm tính khả thi của thiết kế phục hồi).
 
 ### 5.6 Vòng đời Phiên Thực thi, Khởi tạo Lười (Lazy Loading) và Kiểm soát Đồng thời
 1. **Khởi tạo Lười (Lazy Initialization):** Quá trình nạp mô hình vào RAM và VRAM chỉ diễn ra khi có yêu cầu tách nền đầu tiên hoặc khi lệnh CLI warmup được gọi.
 2. **Kiểm soát Đồng thời (Concurrency Governor):** Cấu hình `worker_concurrency = 1` bảo đảm xử lý tuần tự từng ảnh trong nền. Khóa bất đồng bộ `asyncio.Lock` trong provider ngăn chặn triệt để tình trạng hai coroutine cùng khởi tạo phiên đồng thời hoặc gửi lệnh song song vào DirectML gây xung đột tài nguyên đồ họa.
 3. **Thực thi Bất đồng bộ Không Chặn Event Loop (Non-blocking Thread Offloading):** Hàm C++ `session.run()` của ONNX Runtime là tác vụ tính toán nặng (compute-bound) đồng bộ và chặn luồng (blocking). Để bảo đảm server FastAPI không bị đóng băng (không làm nghẽn các endpoint kiểm tra sức khỏe `/healthz` hay các tiến trình HTTP khác), phương thức bất đồng bộ `remove_background()` bắt buộc phải ủy thác hàm suy luận đồng bộ sang luồng riêng qua `await asyncio.to_thread(self._run_inference_sync, ...)`.
-4. **Giải phóng Bộ nhớ Triệt để (`release()`):**
+4. **Giải phóng Tài nguyên Phiên (`release()`):**
    ```python
    def release(self) -> None:
      if self._session is not None:
@@ -970,26 +984,29 @@ Nhằm cung cấp bằng chứng thực nghiệm chính xác, một kịch bản
        self._active_provider = "released"
        gc.collect()
        logger.info(
-           "Đã giải phóng toàn bộ phiên ONNX Runtime và hoàn trả bộ nhớ hệ"
-           " thống."
+           "Đã giải phóng tham chiếu phiên ONNX Runtime và yêu cầu thu dọn bộ"
+           " nhớ."
        )
 ```
+   *Lưu ý kỹ thuật về giải phóng bộ nhớ:* Thao tác `release()` hủy bỏ đối tượng session ONNX Runtime và gọi `gc.collect()` ở tầng Python. Tuy nhiên, theo đặc tả quản trị bộ nhớ của DirectX 12 và trình điều khiển WDDM, **VRAM đồ họa không được giải phóng về đúng 0 MB ngay lập tức** do driver duy trì bộ nhớ đệm (cached heap) để tái sử dụng. Ứng dụng không đưa ra cam kết giải phóng VRAM về 0 MB.
 
-### 5.7 Cơ chế Phục hồi Tường minh khi Tràn Bộ nhớ Đồ họa (GPU OOM to CPU Fallback)
+### 5.7 Đề Xuất Thiết Kế Cơ Chế Phục Hồi khi Tràn Bộ Nhớ Đồ Họa (Proposed GPU OOM to CPU Fallback - Chưa Triển Khai)
 
-> **CẢNH BÁO KIẾN TRÚC:**  
-> Tuyệt đối **KHÔNG ĐƯỢC TUYÊN BỐ RẰNG GPU OOM CÓ THỂ TỰ ĐỘNG CHUYỂN SANG CPU FALLBACK** nếu không có một cơ chế kỹ thuật cụ thể được định danh và cài đặt rõ ràng!
+> **CẢNH BÁO KIẾN TRÚC & PHÂN ĐỊNH HIỆN TRẠNG (PROPOSAL ONLY):**  
+> Cơ chế phục hồi 6 bước dưới đây là **ĐỀ XUẤT THIẾT KẾ KIẾN TRÚC (Architectural Proposal)** cho Phase 0.5B, **HOÀN TOÀN CHƯA ĐƯỢC TRIỂN KHAI HOẶC KIỂM CHỨNG TRONG CODEBASE HIỆN TẠI**.  
+> Tuyệt đối không được hiểu hoặc khẳng định rằng hệ thống đã hoàn thiện tính năng chuyển sang CPU hoặc cam kết ứng dụng luôn hoạt động không gián đoạn. Thay vào đó, đây là đề xuất thiết kế kiến trúc sẽ được triển khai và kiểm thử thực nghiệm trong Phase 0.5B.  
+> Ngoài ra, cơ chế này chỉ là nỗ lực phục hồi ở mức ứng dụng (best-effort recovery); **KHÔNG THỂ BẢO ĐẢM RẰNG MỌI LỖI DirectML OOM HAY LỖI THIẾT BỊ ĐỀU CÓ THỂ KHÔI PHỤC ĐƯỢC AN TOÀN**.
 
 Trong môi trường runtime DirectML trên Windows:
-- Khi card đồ họa bị cạn kiệt VRAM (ví dụ người dùng khởi chạy game 3D nặng hoặc render video đồng thời trong lúc worker đang xử lý ảnh), DirectX 12 driver sẽ từ chối cấp phát bộ đệm GPU.
-- Lỗi này **KHÔNG PHẢI LÀ NGOẠI LỆ PYTHON `MemoryError` THÔNG THƯỜNG**, mà được ném ra từ tầng C++ của ONNX Runtime dưới dạng **`ort.OrtException`** với các mã lỗi HRESULT DirectX đặc thù:
+- Khi card đồ họa bị cạn kiệt VRAM (ví dụ người dùng khởi chạy ứng dụng 3D nặng hoặc render video đồng thời trong lúc worker đang xử lý ảnh), trình điều khiển DirectX 12 sẽ từ chối cấp phát bộ nhớ GPU.
+- Lỗi này được ném ra từ tầng C++ của ONNX Runtime dưới dạng **`ort.OrtException`** kèm các mã HRESULT DirectX:
   * `0x8007000e: E_OUTOFMEMORY` (Cạn kiệt bộ nhớ cấp phát GPU/DirectX).
-  * `0x887A0005: DXGI_ERROR_DEVICE_REMOVED` (Card đồ họa bị ngắt kết nối hoặc driver bị reset do treo TDR).
-  * `0x887A0006: DXGI_ERROR_DEVICE_HUNG` (Lệnh GPU bị quá thời gian xử lý).
-- Sau khi xảy ra `DEVICE_REMOVED`, phiên DirectML cũ (`_session`) hoàn toàn bị tê liệt. Mọi lệnh `run()` tiếp theo trên phiên đó sẽ gây crash tiến trình.
+  * `0x887A0005: DXGI_ERROR_DEVICE_REMOVED` (Thiết bị đồ họa bị ngắt hoặc driver bị reset bởi TDR).
+  * `0x887A0006: DXGI_ERROR_DEVICE_HUNG` (Lệnh GPU bị treo quá thời gian cho phép).
+- Sau khi xảy ra `DEVICE_REMOVED` hoặc GPU driver crash, phiên DirectML cũ (`_session`) hoàn toàn bị vô hiệu hóa.
 
-#### Cơ chế Định danh Cụ thể Cho Phục hồi GPU OOM:
-Để chuyển dịch an toàn sang CPU mà không làm sập ứng dụng, lớp `OnnxBackgroundRemovalProvider` bắt buộc phải triển khai cơ chế phục hồi 6 bước tường minh:
+#### Đề Xuất Thiết Kế 6 Bước Phục Hồi (Kế Hoạch Triển Khai & Kiểm Thử):
+Khi bước vào giai đoạn lập trình Phase 0.5B, lớp `OnnxBackgroundRemovalProvider` được đề xuất sẽ triển khai quy trình 6 bước như sau:
 
 ```python
 async def remove_background(
@@ -1026,17 +1043,19 @@ async def remove_background(
 
       logger.critical(
           "Phát hiện sự cố cạn kiệt VRAM GPU DirectML (%s). "
-          "Kích hoạt cơ chế phục hồi tường minh: Hủy session GPU và tái khởi tạo CPU.",
+          "Kích hoạt đề xuất phục hồi: Hủy session GPU và tái khởi tạo CPU.",
           err_msg,
       )
 
       # BƯỚC 2: Hủy bỏ phiên DirectML bị tê liệt
       self._session = None
 
-      # BƯỚC 3: Thu hồi cưỡng bức con trỏ COM và dọn dẹp bộ nhớ đồ họa
+      # BƯỚC 3: Giải phóng tham chiếu Python và yêu cầu dọn dẹp bộ nhớ
+      # LƯU Ý: gc.collect() chỉ giải phóng tham chiếu Python; KHÔNG bảo đảm driver GPU hoàn trả VRAM tức thì!
       gc.collect()
 
-      # BƯỚC 4: Khởi tạo phiên làm việc CPU mới với cấu hình an toàn
+      # BƯỚC 4: Đề xuất khởi tạo phiên làm việc CPU mới với cấu hình an toàn
+      # LƯU Ý: Bước này có thể thất bại nếu hệ thống cạn kiệt RAM vật lý (System OOM) hoặc tệp mô hình bị hỏng!
       cpu_threads = getattr(self.config, "cpu_threads", 4)
       model_path = str(
           getattr(
@@ -1058,14 +1077,14 @@ async def remove_background(
           providers=["CPUExecutionProvider"],
       )
 
-      # BƯỚC 5: Chốt trạng thái vĩnh viễn (Latch) sang CPU để ngăn flapping
+      # BƯỚC 5: Chốt trạng thái (Latch) sang CPU để ngăn flapping giữa các tác vụ kế tiếp
       self._active_provider = "cpu"
       self._fallback_occurred = True
 
-      # BƯỚC 6: Thực hiện lại tác vụ suy luận trên CPU và đính kèm siêu dữ liệu chẩn đoán
+      # BƯỚC 6: Thử thực hiện lại tác vụ suy luận trên CPU và đính kèm siêu dữ liệu chẩn đoán
+      # LƯU Ý: Bước suy luận lại cũng có thể thất bại nếu RAM không đủ cấp phát bộ đệm kích hoạt trung gian!
       logger.info(
-          "Tái thực hiện suy luận cho ảnh hiện tại trên CPUExecutionProvider"
-          " thành công."
+          "Tái thực hiện suy luận cho ảnh hiện tại trên CPUExecutionProvider."
       )
       out_bytes, meta = await asyncio.to_thread(
           self._run_inference_sync, image_bytes, **kwargs
@@ -1074,6 +1093,11 @@ async def remove_background(
       meta["fallback_reason"] = err_msg
       return out_bytes, meta
 ```
+
+#### Phân Tích Các Giới Hạn và Rủi Ro Cốt Lõi Của Cơ Chế Dự Phòng:
+1. **Lệnh `gc.collect()` không bảo đảm giải phóng VRAM ngay lập tức:** Trình điều khiển đồ họa DirectX 12 và hệ điều hành WDDM quản lý bộ nhớ VRAM theo cơ chế heap riêng biệt. Lệnh `gc.collect()` ở tầng Python chỉ hủy các đối tượng wrapper và giảm bộ đếm tham chiếu COM, nhưng driver có thể giữ lại bộ nhớ heap đó trong bộ đệm đồ họa. Do đó, không thể kỳ vọng VRAM được giải phóng lập tức hay giải phóng về đúng 0 MB.
+2. **Khởi tạo phiên CPU hoặc suy luận lại vẫn có thể thất bại:** Tại Bước 4, việc nạp phiên ONNX Runtime trên CPU yêu cầu cấp phát thêm 300–700 MB RAM hệ thống. Nếu máy tính đang bị cạn kiệt RAM toàn cục (System OOM) hoặc tệp mô hình không thể đọc, việc khởi tạo CPU session sẽ ném ngoại lệ. Tương tự tại Bước 6, việc chạy lại suy luận trên CPU vẫn có thể thất bại nếu không đủ bộ nhớ cho các tensor trung gian.
+3. **Không phải mọi lỗi DirectML đều có thể cứu được an toàn:** Các lỗi phần cứng nghiêm trọng như GPU Device Hung kích hoạt cơ chế Timeout Detection and Recovery (TDR) ở cấp nhân Windows, hoặc crash ở tầng kernel driver WDDM, có thể làm hệ điều hành vô hiệu hóa thiết bị đồ họa hoặc cưỡng chế dừng toàn bộ tiến trình ứng dụng (process crash). Đề xuất này là giải pháp giảm thiểu rủi ro khi gặp lỗi OOM thông thường, chứ không thể cam kết ngăn chặn hoàn toàn việc tiến trình bị dừng hoặc lỗi trong mọi tình huống.
 
 ### 5.8 Bảo tồn Tính Trừu tượng và Nhà cung cấp Giả lập Cho Môi trường CI
 Mẫu thiết kế Factory (`create_background_provider(config)`) sẽ trả về:
@@ -1093,36 +1117,40 @@ Trong môi trường kiểm thử CI (GitHub Actions), cấu hình mặc định
 ├────────────┬─────────────────────────────┬──────────────────────────────────┬────────────────────┤
 │ Tầng       │ Phạm vi & Mục tiêu          │ Ràng buộc & Môi trường           │ Trạng thái Thực tế │
 ├────────────┼─────────────────────────────┼──────────────────────────────────┼────────────────────┤
-│ **Tầng 1** │ Kiểm thử Đơn vị Mock        │ - Không nạp ONNX Runtime nặng    │ **ĐÃ CHẠY & ĐẠT**  │
-│ (Mock CI)  │ - Tuân thủ Protocol         │ - 0 phụ thuộc mô hình học máy    │ (HAS RUN)          │
-│            │ - Kiểm tra cực trị alpha    │ - Chạy trên mọi OS & CI (Linux)  │ 218/218 tests pass │
-│            │ - Điều phối 10 giai đoạn    │ - Thời gian: < 1 giây            │                    │
+│ **Tầng 1** │ Kiểm thử Đơn vị Mock        │ - Không nạp ONNX Runtime nặng    │ **ĐÃ CHẠY (RUN)**  │
+│ (Mock CI)  │ - Tuân thủ Protocol         │ - 0 phụ thuộc mô hình học máy    │ 218/218 passed     │
+│            │ - Kiểm tra cực trị alpha    │ - Chạy trên mọi OS & CI (Linux)  │ (KHÔNG kiểm chứng  │
+│            │ - Điều phối 10 giai đoạn    │ - Thời gian: < 1 giây            │ IS-Net thực tế)    │
 ├────────────┼─────────────────────────────┼──────────────────────────────────┼────────────────────┤
-│ **Tầng 2** │ Tích hợp CPU ONNX Nhân tạo  │ - Cài đặt gói onnxruntime cơ bản │ **KẾ HOẠCH 0.5B**  │
-│ (Synthetic)│ - Hợp đồng Tensor [1,3..]   │ - Mô hình ONNX siêu nhỏ ~2 KB    │ (PLANNED)          │
-│            │ - Padding / Unpadding       │ - 0 tải file 176 MB qua mạng     │ Triển khai khi     │
-│            │ - Khử Sigmoid, trích xuất A │ - Chạy trên GitHub Actions CPU   │ viết code adapter  │
+│ **Tầng 2** │ Tích hợp CPU ONNX Nhân tạo  │ - Cài đặt gói onnxruntime cơ bản │ **CHƯA CHẠY**      │
+│ (Synthetic)│ - Hợp đồng Tensor [1,3..]   │ - Mô hình ONNX siêu nhỏ ~2 KB    │ **(NOT RUN)**      │
+│            │ - Padding / Unpadding       │ - 0 tải file 176 MB qua mạng     │ Kế hoạch đề xuất   │
+│            │ - Khử Sigmoid, trích xuất A │ - Chạy trên GitHub Actions CPU   │ Phase 0.5B         │
 │            │ - Tích hợp Worker toàn tuyến│ - Thời gian: < 2 giây            │                    │
 ├────────────┼─────────────────────────────┼──────────────────────────────────┼────────────────────┤
-│ **Tầng 3** │ Tích hợp Trọng số Thực CPU  │ - Cần tệp isnet-anime.onnx thực  │ **KẾ HOẠCH 0.5B**  │
-│ (Real CPU) │ - Xác minh băm SHA-256 luồng│ - CPUExecutionProvider đa luồng  │ (PLANNED)          │
-│            │ - Kiểm tra ổn định số học   │ - Tự động SKIP nếu thiếu file    │ Chạy kiểm chuẩn    │
-│            │ - Định dạng tensor thực tế  │ - Thời gian: ~1.5 - 3.5 giây/ảnh │ tích hợp ngoại tuyến│
+│ **Tầng 3** │ Tích hợp Trọng số Thực CPU  │ - Cần tệp isnet-anime.onnx thực  │ **CHƯA CHẠY**      │
+│ (Real CPU) │ - Xác minh băm SHA-256 luồng│ - CPUExecutionProvider đa luồng  │ **(NOT RUN)**      │
+│            │ - Kiểm tra ổn định số học   │ - Tự động SKIP nếu thiếu file    │ Kế hoạch đề xuất   │
+│            │ - Định dạng tensor thực tế  │ - Thời gian: ~1.5 - 3.5 giây/ảnh │ Phase 0.5B         │
 ├────────────┼─────────────────────────────┼──────────────────────────────────┼────────────────────┤
-│ **Tầng 4** │ Kiểm thử Phần cứng DirectML │ - Hệ điều hành Windows 10/11     │ **KẾ HOẠCH 0.5B**  │
-│ (DirectML) │ - Khởi tạo DirectX 12 EP    │ - GPU NVIDIA / AMD DirectX 12    │ (PLANNED)          │
-│            │ - Warmup shader compilation │ - Đánh dấu @pytest.mark.directml │ Chạy trên máy dev  │
-│            │ - Đo độ trễ suy luận GPU    │ - Thử nghiệm ép lỗi hạ cấp CPU   │ Windows RTX 4050   │
+│ **Tầng 4** │ Kiểm thử Phần cứng DirectML │ - Hệ điều hành Windows 10/11     │ **CHƯA CHẠY**      │
+│ (DirectML) │ - Khởi tạo DirectX 12 EP    │ - GPU NVIDIA / AMD DirectX 12    │ **(NOT RUN)**      │
+│            │ - Warmup shader compilation │ - Đánh dấu @pytest.mark.directml │ Kế hoạch đề xuất   │
+│            │ - Đo độ trễ suy luận GPU    │ - Thử nghiệm ép lỗi hạ cấp CPU   │ Phase 0.5B         │
 └────────────┴─────────────────────────────┴──────────────────────────────────┴────────────────────┘
 ```
 
-### 6.1 Tầng 1: Kiểm thử Đơn vị với Mock Provider (Trạng thái: ĐÃ CHẠY & VƯỢT QUA)
+### 6.1 Tầng 1: Kiểm thử Đơn vị với Mock Provider (Trạng thái: ĐÃ CHẠY & VƯỢT QUA - RUN)
 - **Mã kiểm thử hiện hữu:** `backend/tests/pipeline/test_mock_background.py`, `test_pipeline_contracts.py`, `test_queue_and_worker.py`.
 - **Môi trường:** Chạy 100% offline trên mọi nền tảng (Linux, macOS, Windows) trong luồng GitHub Actions CI.
-- **Kết quả nghiệm thu:** Đã chạy thực tế, **218/218 bài kiểm thử vượt qua tuyệt đối (42.14s)**.
+- **Kết quả nghiệm thu:** Đã chạy thực tế, **218/218 bài kiểm thử vượt qua (37.04s)**.
 - **Phạm vi bảo đảm:** Xác thực hợp đồng Protocol `BackgroundRemovalProvider`, cực trị alpha `final_alpha.getextrema() == (0, 255)`, dải histogram làm mịn biên, và tính nguyên tử của luồng xử lý 10 giai đoạn trong `PipelineWorker`.
 
-### 6.2 Tầng 2: Kiểm thử Tích hợp CPU ONNX với Mô hình Nhân tạo 2KB (Trạng thái: KẾ HOẠCH TRIỂN KHAI)
+> **CẢNH BÁO QUAN TRỌNG VỀ PHẠM VI TẦNG 1 (TIER 1 SCOPE BOUNDARY):**  
+> Việc 218/218 bài kiểm thử Tầng 1 vượt qua thành công **chỉ chứng minh tính đúng đắn của luồng điều phối Pipeline Core và Mock Provider**.  
+> **TẦNG 1 HOÀN TOÀN KHÔNG XÁC THỰC SUY LUẬN MÔ HÌNH IS-NET THỰC TẾ (Tier 1 does NOT validate real IS-Net inference)** cũng như không chứng minh được tính tương thích của ONNX Runtime hay DirectML trong hệ thống.
+
+### 6.2 Tầng 2: Kiểm thử Tích hợp CPU ONNX với Mô hình Nhân tạo 2KB (Trạng thái: CHƯA CHẠY - NOT RUN)
 - **Tệp kiểm thử kế hoạch:** `backend/tests/pipeline/test_onnx_provider_cpu.py`.
 - **Sáng kiến Kỹ thuật Tách biệt:** Tạo một fixture sinh ra **mô hình ONNX nhân tạo hợp lệ nặng chỉ ~2 KB** ngay trong bộ nhớ tạm:
   ```python
@@ -1165,7 +1193,7 @@ Trong môi trường kiểm thử CI (GitHub Actions), cấu hình mặc định
 > Mô hình ONNX nhân tạo 2 KB **CHỈ ĐƯỢC THIẾT KẾ ĐỂ KIỂM CHỨNG TÍNH HỢP LỆ CỦA LỚP ADAPTER, HỢP ĐỒNG TENSOR VÀ QUY TRÌNH TÍCH HỢP PIPELINE** (kiểm tra tiền xử lý letterbox đối xứng, unpadding khôi phục tọa độ gốc, khử logits qua Sigmoid, trích xuất dải alpha mềm và chuyển giao dữ liệu cho `PipelineWorker`).  
 > **MÔ HÌNH NHÂN TẠO 2 KB HOÀN TOÀN KHÔNG CHỨNG MINH ĐƯỢC HOẠT ĐỘNG CỦA MÔ HÌNH THỰC TẾ IS-NET CŨNG NHƯ KHÔNG PHẢN ÁNH CHẤT LƯỢNG PHÂN VÙNG AI**. Không được nhầm lẫn giữa việc pass Tầng 2 với việc mô hình AI đã bóc nền anime đạt yêu cầu.
 
-### 6.3 Tầng 3: Kiểm thử Tích hợp Mô hình Thực IS-Net trên CPU (Trạng thái: KẾ HOẠCH TRIỂN KHAI)
+### 6.3 Tầng 3: Kiểm thử Tích hợp Mô hình Thực IS-Net trên CPU (Trạng thái: CHƯA CHẠY - NOT RUN)
 - **Tệp kiểm thử kế hoạch:** `backend/tests/pipeline/test_onnx_real_cpu.py`.
 - **Phạm vi kiểm chứng:**
   1. Kiểm tra thuật toán băm SHA-256 dạng luồng trên tệp nhị phân thực tế 176 MB (`isnetis.onnx`).
@@ -1174,7 +1202,7 @@ Trong môi trường kiểm thử CI (GitHub Actions), cấu hình mặc định
   4. Xác nhận dải giá trị tensor đầu ra thực tế khớp định dạng xác suất.
 - **Điều kiện thực thi:** Tự động phát hiện tệp mô hình cục bộ (`data/models/isnet-anime.onnx`); nếu môi trường thiếu tệp (như trên GitHub Actions CI mặc định), bài kiểm thử tự động ghi nhận trạng thái SKIP an toàn.
 
-### 6.4 Tầng 4: Kiểm thử Phần cứng DirectML GPU trên Windows (Trạng thái: KẾ HOẠCH TRIỂN KHAI)
+### 6.4 Tầng 4: Kiểm thử Phần cứng DirectML GPU trên Windows (Trạng thái: CHƯA CHẠY - NOT RUN)
 - **Tệp kiểm thử kế hoạch:** `backend/tests/pipeline/test_onnx_provider_directml.py`.
 - **Cơ chế Gated Hardware:** Tự động bỏ qua nếu không phát hiện runtime DirectML trên máy tính:
   ```python
@@ -1194,7 +1222,7 @@ Trong môi trường kiểm thử CI (GitHub Actions), cấu hình mặc định
   1. Khởi tạo phiên DirectML thực tế trên Windows với `enable_mem_pattern=False`.
   2. Đo thời gian biên dịch shader DirectML trong bước suy luận khởi động (warm-up inference).
   3. Đo độ trễ suy luận ổn định và mức chiếm dụng VRAM đỉnh trên GPU NVIDIA GeForce RTX 4050 6GB.
-  4. Kiểm thử tình huống giả lập thiết bị lỗi (`device_id=999`) để xác nhận cơ chế try-catch tự động rơi về `CPUExecutionProvider` trơn tru mà không làm sập ứng dụng.
+  4. Kiểm thử tình huống giả lập thiết bị lỗi (`device_id=999`) để kiểm nghiệm tính khả thi của đề xuất cơ chế try-catch hạ cấp về `CPUExecutionProvider` (lưu ý đây là đề xuất sẽ kiểm thử, không bảo đảm mọi lỗi phần cứng hay driver đều khôi phục được).
 
 ---
 
@@ -1202,9 +1230,9 @@ Trong môi trường kiểm thử CI (GitHub Actions), cấu hình mặc định
 
 | STT | Rủi ro Kỹ thuật / Chế độ Thất bại | Mức độ Nghiêm trọng | Xác suất | Giải pháp Giảm thiểu Kiến trúc (Mitigation Strategy) |
 |---|---|---|---|---|
-| 1 | **Rủi ro Pháp lý Bản quyền Bộ dữ liệu DIS5K** | Trung bình | Thấp | Áp dụng chiến lược **BYOM (Bring-Your-Own-Model)**; không lưu trữ file nhị phân trong mã nguồn Git; duy trì giao diện mở sẵn sàng tích hợp các mô hình thương mại (BRIA RMBG). |
-| 2 | **Lỗi Trình điều khiển GPU DirectML (Driver Crash)** | Cao | Trung bình | Thiết lập cơ chế bọc lỗi 2 tầng: tự động bắt ngoại lệ khởi tạo/warmup và **hạ cấp êm dịu vĩnh viễn về CPU** cho phiên làm việc đó. |
-| 3 | **Cạn kiệt Bộ nhớ Đồ họa Đột ngột (GPU VRAM OOM)** | Cao | Thấp | Bắt ngoại lệ OOM giữa chu kỳ suy luận, gọi hàm `release()` giải phóng VRAM ngay lập tức và nạp lại mô hình trên CPU để hoàn tất ảnh. |
+| 1 | **Rủi ro Pháp lý Bản quyền Bộ dữ liệu DIS5K** | Trung bình | Thấp | Áp dụng chiến lược **BYOM (Bring-Your-Own-Model)**; không lưu trữ file nhị phân trong mã nguồn Git; duy trì giao diện mở sẵn sàng tích hợp các mô hình thương mại (BRIA RMBG). *Lưu ý:* BYOM không xóa bỏ mọi rủi ro bản quyền; việc phân phối thương mại bắt buộc phải có đánh giá pháp lý độc lập phù hợp. |
+| 2 | **Lỗi Trình điều khiển GPU DirectML (Driver Crash)** | Cao | Trung bình | Đề xuất thiết kế cơ chế bọc lỗi 2 tầng: bắt ngoại lệ khởi tạo/warmup để chuyển sang CPU; lưu ý lỗi nghiêm trọng/TDR reset ở cấp hệ điều hành vẫn có thể gây dừng tiến trình. |
+| 3 | **Cạn kiệt Bộ nhớ Đồ họa Đột ngột (GPU VRAM OOM)** | Cao | Thấp | Đề xuất thiết kế 6 bước bắt ngoại lệ OOM, hủy session và thử tái khởi tạo trên CPU (lưu ý `gc.collect()` không bảo đảm giải phóng VRAM ngay, và tạo phiên CPU vẫn có thể thất bại nếu cạn RAM hệ thống). |
 | 4 | **Biến dạng Tỷ lệ Giải phẫu Nhân vật Miku** | Cao | Cao nếu làm sai | Bắt buộc sử dụng thuật toán **Symmetrical Letterboxing**, cấm kéo dãn ảnh trực tiếp; unpad nội suy song tuyến trở lại kích thước gốc. |
 | 5 | **Nhiễm Độc Chuỗi Cung ứng (Supply Chain Hijack)** | Rất cao | Thấp | Bắt buộc thực thi **Pre-Load Invariant**: kiểm tra mã băm SHA-256 dạng luồng trước khi nạp; cách ly tệp hỏng sang `quarantine/`; cấm tự động tải khi import. |
 | 6 | **Rớt Mạng Khi Tải Trọng số Mô hình** | Trung bình | Trung bình | Tải qua file tạm `.tmp.<uuid>`, kiểm tra tính toàn vẹn SHA-256 và kích thước $176\text{MB}$ trước khi hoán đổi tên nguyên tử bằng `os.replace()`. |
@@ -1255,6 +1283,9 @@ Nhằm phục vụ công tác thanh tra, kiểm toán độc lập của Owner v
 - **Commit kiểm toán đối kháng Reviewer R2:** `7949c0afe55c7c504689fc2e44d00ccf829a709f`
 - **Đường dẫn Commit Reviewer R2 trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/7949c0afe55c7c504689fc2e44d00ccf829a709f`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/7949c0afe55c7c504689fc2e44d00ccf829a709f)
+- **Commit kiểm toán đối kháng Reviewer R3:** `5c343418dee88169583d76bdded1792b8dc844d6`
+- **Đường dẫn Commit Reviewer R3 trên GitHub:**  
+  [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/5c343418dee88169583d76bdded1792b8dc844d6`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/5c343418dee88169583d76bdded1792b8dc844d6)
 - **Đường dẫn tệp báo cáo trực tiếp trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/blob/docs/m0-task-05b-architecture-survey/docs/architecture/phase-05b-isnet-anime-survey.md`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/blob/docs/m0-task-05b-architecture-survey/docs/architecture/phase-05b-isnet-anime-survey.md)
 
@@ -1280,21 +1311,23 @@ git diff main...HEAD --stat
 
 ## 9. TÓM TẮT DỄ HIỂU DÀNH CHO SẾP (Plain Language Summary for Owner)
 
-*(Phần báo cáo thân mật, trực quan tuân thủ Quy định Thư ký Dự án tại `AGENTS.md`)*
+*(Báo cáo tóm lược tuân thủ Quy định Thư ký Dự án tại `AGENTS.md`, bảo đảm tính trung thực kỹ thuật và phân định rõ ràng giữa thiết kế lý thuyết và kết quả thực tế)*
 
-Kính gửi Sếp, Thư ký Dự án xin được tóm tắt ngắn gọn toàn bộ kết quả khảo sát kỹ thuật đợt này bằng ngôn ngữ đời thường, gần gũi nhất:
+Kính gửi Sếp, Thư ký Dự án xin được tóm tắt ngắn gọn toàn bộ hiện trạng báo cáo khảo sát kỹ thuật Phase 0.5B đợt này bằng ngôn ngữ đời thường, trực quan nhất:
 
-- **1. Đã làm xong món gì mới?**  
-  Em và đội ngũ đã hoàn thiện bản thiết kế kiến trúc và báo cáo khảo sát kỹ thuật toàn diện để chuẩn bị nâng cấp cho Miku một **"cặp kính AI tách nền chuyên nghiệp"** (mô hình IS-Net Anime). Khác với bộ lọc màu cơ bản trước đây, món mới này cực kỳ thông minh: soi rõ từng cọng tóc mai bay lơ thơ, từng nếp nơ áo bồng bềnh, và dải sáng trên mái tóc của Miku để cắt rời nhân vật ra khỏi phông nền với độ sắc sảo từng sợi tóc. Chúng em đã tách bạch rõ ràng: phép thử toán học trước đây chỉ chứng minh thước đo khung hình không bị méo lệch, chứ không dùng để "nói quá" về chất lượng AI; đồng thời vạch sẵn kế hoạch đo kiểm 6 trường hợp hóc búa nhất của tranh anime khi có mặt nạ chuẩn. Toàn bộ thiết kế nằm gọn gàng trong tệp tài liệu khảo sát, chưa hề sửa đổi bất kỳ dòng code nào của hệ thống.
+- **1. Đã làm xong món gì mới? (Những gì đã được thiết kế và ghi nhận trong tài liệu):**  
+  Em và đội ngũ đã hoàn thiện toàn diện bản thiết kế kiến trúc kỹ thuật để chuẩn bị nâng cấp cho Miku một **"cặp kính AI tách nền chuyên nghiệp"** (mô hình IS-Net Anime). Bản thiết kế đã xây dựng đầy đủ "khuôn đệm ảnh" (letterboxing) để không làm méo hình Miku, cơ chế "dải viền mờ mềm" (soft alpha) với mục tiêu hướng tới việc giữ các chi tiết sợi tóc mai và phụ kiện mỏng, "ổ khóa kiểm tra vân tay số" (SHA-256 dạng luồng) chống tráo đổi file, và 4 cổng kiểm tra chất lượng mặt nạ đầu ra. Xin lưu ý: Toàn bộ những nội dung này hiện **thuần túy nằm trong tài liệu khảo sát kỹ thuật**, chưa hề sửa đổi hay thêm bớt bất kỳ dòng code chương trình nào.
 
-- **2. Nó hoạt động trên máy thế nào?**  
-  Cực kỳ êm ái và nhẹ máy, thưa Sếp! Chúng em đã thiết kế cơ chế **"hai chân cắm thông minh"**: nếu máy tính của Sếp có card đồ họa (dù là card rời NVIDIA, AMD hay chip đồ họa tích hợp Intel), hệ thống sẽ tận dụng qua công nghệ DirectML của Windows với mục tiêu thiết kế đạt tốc độ tách nền chỉ trong khoảng **0,2 giây** và tốn tầm 1 GB bộ nhớ đồ họa (đây là ước tính lý thuyết và mục tiêu thiết kế, chúng em đã chuẩn bị sẵn bài đo kiểm thực tế 8 bước trên card đồ họa RTX 4050 ở bước tiếp theo để báo cáo số liệu chuẩn xác cho Sếp). Tuyệt vời hơn, nếu card đồ họa bận hoặc máy không có card rời, hệ thống đã có sẵn cơ chế định danh cụ thể để **tự động chuyển êm sang chip CPU** xử lý mà không hề văng ứng dụng hay báo lỗi màn hình.
+- **2. Nó hoạt động trên máy thế nào? (Những gì đã thực sự được kiểm tra):**  
+  Thực tế kiểm tra cho thấy: Bộ khung sườn hiện tại của hệ thống (Pipeline Core Task 0.5A) vẫn đang chạy rất nhẹ và mượt mà, **vượt qua toàn bộ 218 bài kiểm tra tự động cũ** với bộ tách nền giả lập (Mock Provider). Phép thử toán học trên khung hình cũng khẳng định thuật toán co dãn không bị sai lệch (sai số dưới 0,081 pixel). Tuy nhiên, **218 bài test này chỉ chứng minh khung sườn ứng dụng chạy tốt, hoàn toàn CHƯA kiểm chứng mô hình AI IS-Net thật hay card đồ họa DirectML**.
 
-- **3. Đã kiểm tra an toàn chưa?**  
-  An toàn tuyệt đối 100%, Sếp hoàn toàn yên tâm!  
-  - Về bản quyền: Chúng em đã kiểm tra và ghi nhận bằng chứng tác giả mô hình đã chính thức cấp phép Apache-2.0 trên Hugging Face; phân tích rõ điều khoản phi thương mại của dữ liệu đào tạo không tự động lây nhiễm sang trọng số mô hình; đồng thời áp dụng cơ chế *"chìa khóa mở"* (BYOM) — mã nguồn dự án sạch sẽ 100%, không lưu trữ file mô hình nặng trên Git để tránh mọi rủi ro pháp lý.  
-  - Về bảo mật: Ghim chặt mã phiên bản commit cố định trên Hugging Face và trang bị **"ổ khóa kiểm tra vân tay số"** (SHA-256). Mô hình phải đúng từng dấu chấm phẩy mới được nạp; nếu file bị hỏng hay ai đó đánh tráo, hệ thống sẽ đá văng vào hộp cách ly ngay lập tức. Nghiêm cấm tuyệt đối việc tự tiện tải lén file từ internet khi phần mềm khởi động.  
-  - Về kiểm thử & mã nguồn: Toàn bộ **218 bài kiểm tra cũ** của hệ sinh thái vẫn đang chạy mượt mà, đạt điểm xanh 100% (218/218 tests passing), và không có bất kỳ dòng code chương trình nào bị thay đổi.
+- **3. Đã kiểm tra an toàn chưa? (Những gì còn chưa triển khai và chưa được kiểm chứng):**  
+  Đội ngũ cam kết trung thực tuyệt đối, không gian lận, báo cáo rõ các điểm còn chưa làm và chưa kiểm chứng:  
+  - *Chưa viết mã adapter AI:* Mã nguồn kết nối mô hình ONNX Runtime (`OnnxBackgroundRemovalProvider`) chưa được lập trình vào codebase.  
+  - *Chưa chạy test mô hình thật:* Các tầng kiểm thử với mô hình giả lập ONNX (Tầng 2), mô hình thật trên CPU (Tầng 3), và mô hình thật trên card đồ họa DirectML (Tầng 4) đều đang ở trạng thái **CHƯA CHẠY (NOT RUN)**.  
+  - *Hiệu năng và bộ nhớ mới là ước tính:* Con số tốc độ ~0,2 giây và mức tốn ~1 GB VRAM chỉ là ước tính lý thuyết và mục tiêu thiết kế trên giấy, chưa có số liệu đo đạc thực tế; đồng thời bộ nhớ đồ họa VRAM cũng không thể giải phóng ngay lập tức về 0 MB do cơ chế giữ bộ đệm của driver hệ điều hành.  
+  - *Dự phòng CPU chỉ mới là đề xuất thiết kế:* Cơ chế 6 bước chuyển từ card đồ họa sang CPU khi tràn bộ nhớ mới là đề xuất trên bản vẽ, chưa được lập trình hay kiểm thử; trong thực tế không phải lỗi card đồ họa nào cũng cứu được, và việc tạo phiên CPU hay chạy lại cũng có thể lỗi nếu máy tính bị cạn sạch RAM.  
+  - *Về bản quyền:* Tác giả mô hình đã gắn nhãn Apache-2.0 và dữ liệu DIS5K không tự động lây nhiễm lên trọng số, nhưng cơ chế BYOM không xóa bỏ hết mọi rủi ro; việc phân phối thương mại sau này vẫn cần có tư vấn pháp lý chuyên nghiệp độc lập.
 
-- **4. Bước tiếp theo Sếp cần làm gì?**  
-  Nhánh `docs/m0-task-05b-architecture-survey` chứa commit khảo sát đã được đẩy thành công lên GitHub remote origin để Sếp và hệ thống kiểm tra. Sếp chỉ cần xem qua bản báo cáo này, nếu Sếp ưng ý với định hướng kiến trúc trên, xin Sếp **gật đầu duyệt thông qua** để đội ngũ bắt tay ngay vào việc lập trình các tệp code cho Phase 0.5B theo đúng lộ trình đã đề ra ạ!
+- **4. Bước tiếp theo Sếp cần làm gì? (Quyết định tiếp theo của Sếp):**  
+  Bản báo cáo khảo sát kiến trúc này đã được hiệu đính chuẩn xác và đẩy lên nhánh `docs/m0-task-05b-architecture-survey` trên GitHub để phục vụ việc lưu vết và kiểm toán độc lập. Thư ký xin kính trình bản báo cáo hiệu đính hoàn chỉnh này để Sếp xem xét và quyết định xem định hướng kiến trúc đề xuất (tích hợp IS-Net Anime với DirectML/CPU fallback và kế hoạch đo kiểm thực nghiệm) đã đủ chặt chẽ để đưa vào kế hoạch triển khai cho Phase 0.5B hay cần điều chỉnh thêm.
