@@ -162,16 +162,42 @@ def postprocess_mask(
     min_a = int(alpha_arr.min())
     max_a = int(alpha_arr.max())
     total_pixels = alpha_arr.size
-    transparent_ratio = float(np.count_nonzero(alpha_arr < 10) / total_pixels)
-    opaque_ratio = float(np.count_nonzero(alpha_arr > 240) / total_pixels)
-    soft_edge_pixels = int(np.count_nonzero((alpha_arr >= 10) & (alpha_arr <= 245)))
+
+    # Standard three disjoint pixel groups: Transparent (alpha == 0), Soft (0 < alpha < 255), Solid (alpha == 255)
+    # Strict invariant: transparent_pixels + soft_pixels + solid_pixels == total_pixels (W * H)
+    transparent_pixels = int(np.count_nonzero(alpha_arr == 0))
+    soft_pixels = int(np.count_nonzero((alpha_arr > 0) & (alpha_arr < 255)))
+    solid_pixels = int(np.count_nonzero(alpha_arr == 255))
+    if transparent_pixels + soft_pixels + solid_pixels != total_pixels:
+        raise ValueError(
+            f"Alpha pixel partition mismatch: {transparent_pixels} + {soft_pixels} + {solid_pixels} "
+            f"!= {total_pixels}"
+        )
+
+    transparent_ratio = float(transparent_pixels / total_pixels)
+    soft_ratio = float(soft_pixels / total_pixels)
+    solid_ratio = float(solid_pixels / total_pixels)
+
+    # Detailed transitional alpha threshold (10 <= alpha <= 245) for anti-aliasing gradient analysis
+    # Note: transitional_alpha_pixels is a fine-grained subset of soft_pixels, not a replacement
+    transitional_alpha_pixels = int(np.count_nonzero((alpha_arr >= 10) & (alpha_arr <= 245)))
+    transitional_alpha_ratio = float(transitional_alpha_pixels / total_pixels)
 
     metadata: dict[str, Any] = {
         "dimensions": [meta.orig_width, meta.orig_height],
         "alpha_extrema": [min_a, max_a],
+        "total_pixels": total_pixels,
+        "transparent_pixels": transparent_pixels,
+        "soft_pixels": soft_pixels,
+        "solid_pixels": solid_pixels,
         "transparent_ratio": transparent_ratio,
-        "opaque_ratio": opaque_ratio,
-        "soft_edge_pixels": soft_edge_pixels,
+        "soft_ratio": soft_ratio,
+        "solid_ratio": solid_ratio,
+        "transitional_alpha_pixels": transitional_alpha_pixels,
+        "transitional_alpha_ratio": transitional_alpha_ratio,
+        # Backward compatibility aliases
+        "soft_edge_pixels": soft_pixels,
+        "opaque_ratio": solid_ratio,
         "bbox": list(alpha_chan.getbbox() or [0, 0, 0, 0]),
     }
     return png_bytes, metadata

@@ -62,3 +62,6 @@ Thumbs.db
 *.onnx
 backend/tests/fixtures/real_anime/
 data/tier3_output/
+
+# Multi-agent coordination runtime
+.agents/

@@ -99,19 +99,33 @@ async def test_real_cpu_inference_on_anime_sample(
         assert min_alpha <= 5, f"{sample_name}: minimum alpha {min_alpha} > 5 (background not extracted)"
         assert max_alpha >= 250, f"{sample_name}: maximum alpha {max_alpha} < 250 (subject not solid)"
 
-        # 5. Soft alpha anti-aliasing proof (Neural matting signature)
-        soft_pixels = int(np.count_nonzero((alpha_arr >= 10) & (alpha_arr <= 245)))
+        # 5. Standardized 3 disjoint alpha pixel groups:
+        # Transparent (alpha == 0), Soft (0 < alpha < 255), Solid (alpha == 255)
+        total_pixels = alpha_arr.size
+        transparent_pixels = int(np.count_nonzero(alpha_arr == 0))
+        soft_pixels = int(np.count_nonzero((alpha_arr > 0) & (alpha_arr < 255)))
+        solid_pixels = int(np.count_nonzero(alpha_arr == 255))
+        assert transparent_pixels + soft_pixels + solid_pixels == total_pixels, (
+            f"{sample_name}: alpha partition sum mismatch: "
+            f"{transparent_pixels} + {soft_pixels} + {solid_pixels} != {total_pixels}"
+        )
         assert soft_pixels > 0, (
             f"{sample_name}: No soft alpha anti-aliasing detected ({soft_pixels} pixels). "
             f"Expected neural gradient."
         )
 
+        # Detailed transitional alpha threshold (10 <= alpha <= 245) for anti-aliasing gradient analysis
+        transitional_alpha_pixels = int(np.count_nonzero((alpha_arr >= 10) & (alpha_arr <= 245)))
+        assert transitional_alpha_pixels > 0, (
+            f"{sample_name}: No transitional alpha detected in [10, 245] range"
+        )
+
         # 6. Silhouette coverage limits
-        total_pixels = alpha_arr.size
-        opaque_ratio = float(np.count_nonzero(alpha_arr > 240) / total_pixels)
-        transparent_ratio = float(np.count_nonzero(alpha_arr < 10) / total_pixels)
-        assert 0.05 <= opaque_ratio <= 0.95, (
-            f"{sample_name}: opaque ratio {opaque_ratio:.3f} outside valid [0.05, 0.95] range"
+        solid_ratio = float(solid_pixels / total_pixels)
+        transparent_ratio = float(transparent_pixels / total_pixels)
+        soft_ratio = float(soft_pixels / total_pixels)
+        assert 0.05 <= solid_ratio <= 0.95, (
+            f"{sample_name}: solid ratio {solid_ratio:.3f} outside valid [0.05, 0.95] range"
         )
         assert transparent_ratio >= 0.05, (
             f"{sample_name}: transparent ratio {transparent_ratio:.3f} < 0.05"
@@ -143,7 +157,7 @@ async def test_real_cpu_inference_on_anime_sample(
     # Save transparent RGBA output
     out_rgba_file.write_bytes(rgba_bytes)
 
-    # Save diagnostic metadata
+    # Save standardized diagnostic metadata
     artifact_meta: dict[str, Any] = {
         "sample_name": sample_name,
         "model_name": meta.get("model_name"),
@@ -151,8 +165,17 @@ async def test_real_cpu_inference_on_anime_sample(
         "latency_ms": meta.get("latency_ms"),
         "dimensions": [orig_w, orig_h],
         "alpha_extrema": [min_alpha, max_alpha],
-        "soft_edge_pixels": soft_pixels,
-        "opaque_ratio": opaque_ratio,
+        "total_pixels": total_pixels,
+        "transparent_pixels": transparent_pixels,
+        "soft_pixels": soft_pixels,
+        "solid_pixels": solid_pixels,
         "transparent_ratio": transparent_ratio,
+        "soft_ratio": soft_ratio,
+        "solid_ratio": solid_ratio,
+        "transitional_alpha_pixels": transitional_alpha_pixels,
+        "transitional_alpha_ratio": float(transitional_alpha_pixels / total_pixels),
+        # Backward compatibility aliases
+        "soft_edge_pixels": soft_pixels,
+        "opaque_ratio": solid_ratio,
     }
     out_meta_file.write_text(json.dumps(artifact_meta, indent=2), encoding="utf-8")

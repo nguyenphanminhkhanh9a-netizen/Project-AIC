@@ -11,21 +11,21 @@ import asyncio
 import io
 import json
 import os
-from pathlib import Path
 import sys
 import time
+from pathlib import Path
 
 # Ensure backend is on sys.path
 backend_dir = Path(__file__).resolve().parent.parent / "backend"
 if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
-import numpy as np  # noqa: E402
-from PIL import Image  # noqa: E402
+import numpy as np
+from PIL import Image
 
-from app.pipeline.background.isnet_provider import ISNetONNXProvider  # noqa: E402
-from app.pipeline.config import PipelineConfig  # noqa: E402
-from app.pipeline.security.model_verifier import verify_model_file  # noqa: E402
+from app.pipeline.background.isnet_provider import ISNetONNXProvider
+from app.pipeline.config import PipelineConfig
+from app.pipeline.security.model_verifier import verify_model_file
 
 FIXTURES_DIR = backend_dir / "tests" / "fixtures" / "real_anime"
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "data" / "tier3_output"
@@ -86,20 +86,32 @@ async def run_benchmark() -> None:
                 orig_rgb = in_img.convert("RGB")
 
             t0 = time.perf_counter()
-            rgba_bytes, meta = await provider.remove_background(raw_bytes)
+            rgba_bytes, _diag_meta = await provider.remove_background(raw_bytes)
             latency_ms = (time.perf_counter() - t0) * 1000.0
 
             with Image.open(io.BytesIO(rgba_bytes)) as out_img:
-                out_size = out_img.size
-                mode = out_img.mode
                 alpha_chan = out_img.getchannel("A")
                 alpha_arr = np.array(alpha_chan, dtype=np.uint8)
 
             extrema = (int(alpha_arr.min()), int(alpha_arr.max()))
             total_px = alpha_arr.size
-            soft_px = int(np.count_nonzero((alpha_arr >= 10) & (alpha_arr <= 245)))
-            opaque_pct = float(np.count_nonzero(alpha_arr > 240) / total_px * 100.0)
-            trans_pct = float(np.count_nonzero(alpha_arr < 10) / total_px * 100.0)
+
+            # Standard three disjoint pixel groups: Transparent (alpha == 0), Soft (0 < alpha < 255), Solid (alpha == 255)
+            # Invariant: n_trans + n_soft + n_solid == total_px
+            n_trans = int(np.count_nonzero(alpha_arr == 0))
+            n_soft = int(np.count_nonzero((alpha_arr > 0) & (alpha_arr < 255)))
+            n_solid = int(np.count_nonzero(alpha_arr == 255))
+            assert n_trans + n_soft + n_solid == total_px, (
+                f"{s_id}: Alpha partition sum mismatch: {n_trans} + {n_soft} + {n_solid} != {total_px}"
+            )
+
+            trans_pct = float(n_trans / total_px * 100.0)
+            soft_pct = float(n_soft / total_px * 100.0)
+            solid_pct = float(n_solid / total_px * 100.0)
+
+            # Detailed transitional alpha threshold (10 <= alpha <= 245) for anti-aliasing gradient analysis
+            transitional_px = int(np.count_nonzero((alpha_arr >= 10) & (alpha_arr <= 245)))
+            transitional_pct = float(transitional_px / total_px * 100.0)
 
             # Check RGB preservation on solid pixels
             solid_mask = alpha_arr == 255
@@ -120,33 +132,44 @@ async def run_benchmark() -> None:
                 "dimensions": orig_size,
                 "latency_ms": latency_ms,
                 "alpha_extrema": list(extrema),
-                "soft_edge_pixels": soft_px,
-                "opaque_percent": opaque_pct,
+                "total_pixels": total_px,
+                "transparent_pixels": n_trans,
+                "soft_pixels": n_soft,
+                "solid_pixels": n_solid,
                 "transparent_percent": trans_pct,
+                "soft_percent": soft_pct,
+                "solid_percent": solid_pct,
+                "transitional_alpha_pixels": transitional_px,
+                "transitional_alpha_percent": transitional_pct,
+                # Backward compatibility aliases
+                "soft_edge_pixels": n_soft,
+                "opaque_percent": solid_pct,
                 "solid_rgb_max_diff": rgb_diff,
             }
             (OUTPUT_DIR / f"{s_id}_meta.json").write_text(json.dumps(meta_data, indent=2), encoding="utf-8")
 
             results.append(meta_data)
-            print(f"      [{idx}/5] {s_id}: {latency_ms:.1f}ms | soft_px={soft_px} | size={out_size} | OK")
+            print(f"      [{idx}/5] {s_id}: {latency_ms:.1f}ms | soft={n_soft:,} ({soft_pct:.2f}%) | transitional={transitional_px:,} | OK")
     finally:
         provider.release()
 
     # Markdown Summary Table
-    print("\n" + "=" * 80)
-    print("TIER 3 VERIFICATION BENCHMARK SUMMARY")
-    print("=" * 80)
-    print("| Sample ID | Input Size | Latency | Extrema | Soft Alpha Px | Opaque % | Trans % | Status |")
-    print("|---|---|---|---|---|---|---|---|")
+    print("\n" + "=" * 105)
+    print("TIER 3 VERIFICATION BENCHMARK SUMMARY (STANDARDIZED ALPHA METRICS)")
+    print("=" * 105)
+    print("| Sample ID | Input Size | Latency | Extrema | Transparent (a=0) | Soft (0<a<255) | Solid (a=255) | Transitional (10<=a<=245) | Sum Check | Status |")
+    print("|---|---|---|---|---|---|---|---|---|---|")
     for r in results:
         w, h = r["dimensions"]
         lat = f"{r['latency_ms']:.1f}ms"
         ext = f"({r['alpha_extrema'][0]}, {r['alpha_extrema'][1]})"
-        soft = f"{r['soft_edge_pixels']:,}"
-        op = f"{r['opaque_percent']:.1f}%"
-        tr = f"{r['transparent_percent']:.1f}%"
-        print(f"| `{r['sample_id']}` | {w}x{h} | {lat} | {ext} | {soft} | {op} | {tr} | **PASS** |")
-    print("=" * 80)
+        tr = f"{r['transparent_pixels']:,} ({r['transparent_percent']:.1f}%)"
+        sf = f"{r['soft_pixels']:,} ({r['soft_percent']:.1f}%)"
+        sd = f"{r['solid_pixels']:,} ({r['solid_percent']:.1f}%)"
+        trans = f"{r['transitional_alpha_pixels']:,} ({r['transitional_alpha_percent']:.1f}%)"
+        sum_ok = "PASS" if (r['transparent_pixels'] + r['soft_pixels'] + r['solid_pixels'] == r['total_pixels']) else "FAIL"
+        print(f"| `{r['sample_id']}` | {w}x{h} | {lat} | {ext} | {tr} | {sf} | {sd} | {trans} | {sum_ok} | **PASS** |")
+    print("=" * 105)
     print(f"\nAll artifacts saved to: {OUTPUT_DIR.resolve()}\n")
 
 
