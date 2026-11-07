@@ -77,9 +77,11 @@ class TestImageOpsExtremeDimensions:
         raw_mask[0, 0, mask_circle] = 0.95
 
         # Postprocess unpad and merge
-        out_png_bytes, _diag_meta = postprocess_mask(raw_mask, img, meta)
+        out_png_bytes, diag_meta = postprocess_mask(raw_mask, img, meta)
         assert isinstance(out_png_bytes, bytes)
         assert len(out_png_bytes) > 0
+        assert diag_meta["transparent_pixels"] + diag_meta["soft_pixels"] + diag_meta["solid_pixels"] == w * h
+        assert diag_meta["transitional_alpha_pixels"] <= diag_meta["soft_pixels"]
 
         with Image.open(io.BytesIO(out_png_bytes)) as out_img:
             assert out_img.mode == "RGBA"

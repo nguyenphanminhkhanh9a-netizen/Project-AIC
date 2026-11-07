@@ -51,6 +51,23 @@ class TestVisualEvidenceArtifactsIntegrity:
         assert manifest["target_flat_count"] == 30
         assert len(manifest["samples"]) == 5
 
+        # Verify standardized alpha metrics specification in manifest
+        alpha_spec = manifest.get("alpha_metrics_specification", {})
+        assert alpha_spec.get("transparent") == "alpha == 0"
+        assert alpha_spec.get("soft") == "0 < alpha < 255"
+        assert alpha_spec.get("solid") == "alpha == 255"
+
+        # Verify all 5 samples satisfy partition invariant and transitional subset constraint
+        for sample in manifest["samples"]:
+            n_trans = sample["transparent_pixels"]
+            n_soft = sample["soft_pixels"]
+            n_solid = sample["solid_pixels"]
+            n_tot = sample["total_pixels"]
+            assert n_trans + n_soft + n_solid == n_tot, f"{sample['sample_code']}: partition mismatch"
+            assert sample["transitional_alpha_pixels"] <= n_soft, (
+                f"{sample['sample_code']}: transitional ({sample['transitional_alpha_pixels']}) > soft ({n_soft})"
+            )
+
     def test_top_level_files_count_and_naming(self) -> None:
         """Verify exactly 32 top-level files (31 PNGs + 1 JSON) with strict naming conventions."""
         top_files = [f for f in VIS_DIR.iterdir() if f.is_file()]
@@ -191,32 +208,58 @@ class TestEmpiricalImageTruthfulness:
         assert int(np.max(sub)) == 81, f"Expected max alpha = 81 in leak, got {np.max(sub)}"
 
     def test_sample_04_soft_edge_concentration(self) -> None:
-        """Verify sample_04 soft pixels total exactly 250,753 with >90% in lower half and >66% in bottom 264 rows."""
+        """Verify sample_04 disjoint partition (538k trans, 285k soft, 248k solid) and 250k transitional alpha."""
         alpha_04 = np.array(Image.open(TIER3_DIR / "sample_04_small_accessories_mask.png").convert("L"))
+        total_pixels = alpha_04.size
+        assert total_pixels == 848 * 1264
 
-        # Heuristic soft range (10 <= alpha <= 245)
-        soft_mask = (alpha_04 >= 10) & (alpha_04 <= 245)
-        total_soft = int(np.sum(soft_mask))
-        assert total_soft == 250753, f"Expected 250,753 soft pixels, got {total_soft}"
+        # Standard 3 disjoint groups
+        transparent_pixels = int(np.sum(alpha_04 == 0))
+        soft_pixels = int(np.sum((alpha_04 > 0) & (alpha_04 < 255)))
+        solid_pixels = int(np.sum(alpha_04 == 255))
+        assert transparent_pixels == 538089
+        assert soft_pixels == 285223
+        assert solid_pixels == 248560
+        assert transparent_pixels + soft_pixels + solid_pixels == total_pixels
 
-        upper_soft = int(np.sum(soft_mask[:632, :]))
-        lower_soft = int(np.sum(soft_mask[632:, :]))
-        assert lower_soft / total_soft > 0.90, f"Lower half soft ratio {lower_soft/total_soft} <= 0.90"
-        assert upper_soft == 24673
-        assert lower_soft == 226080
+        # Diagnostic transitional alpha range (10 <= alpha <= 245)
+        transitional_mask = (alpha_04 >= 10) & (alpha_04 <= 245)
+        transitional_pixels = int(np.sum(transitional_mask))
+        assert transitional_pixels == 250753
+        assert transitional_pixels <= soft_pixels
 
-        bottom_264 = int(np.sum(soft_mask[1000:, :]))
+        # Spatial distribution of transitional gradient (lower half concentration)
+        upper_transitional = int(np.sum(transitional_mask[:632, :]))
+        lower_transitional = int(np.sum(transitional_mask[632:, :]))
+        assert lower_transitional / transitional_pixels > 0.90, (
+            f"Lower half transitional ratio {lower_transitional/transitional_pixels} <= 0.90"
+        )
+        assert upper_transitional == 24673
+        assert lower_transitional == 226080
+
+        bottom_264 = int(np.sum(transitional_mask[1000:, :]))
         assert bottom_264 == 166495
-        assert bottom_264 / total_soft > 0.66
+        assert bottom_264 / transitional_pixels > 0.66
 
-        # Check Y >= 1200 has 0 opaque pixels
+        # Check Y >= 1200 has 0 opaque pixels (artistic fade)
         bottom_rows = alpha_04[1200:, :]
         assert np.sum(bottom_rows == 255) == 0, "Bottom rows should have 0 opaque pixels (artistic fade)"
         assert np.max(bottom_rows) <= 125
 
     def test_sample_05_translucent_wings_and_gown(self) -> None:
-        """Verify sample_05 has true semi-transparent pixels in wings and gown."""
+        """Verify sample_05 disjoint partition (546k trans, 176k soft, 348k solid) and translucent gown."""
         alpha_05 = np.array(Image.open(TIER3_DIR / "sample_05_translucent_costume_mask.png").convert("L"))
+        total_pixels = alpha_05.size
+        assert total_pixels == 848 * 1264
+
+        # Standard 3 disjoint groups
+        transparent_pixels = int(np.sum(alpha_05 == 0))
+        soft_pixels = int(np.sum((alpha_05 > 0) & (alpha_05 < 255)))
+        solid_pixels = int(np.sum(alpha_05 == 255))
+        assert transparent_pixels == 546573
+        assert soft_pixels == 176607
+        assert solid_pixels == 348692
+        assert transparent_pixels + soft_pixels + solid_pixels == total_pixels
 
         # Gown crop: [850:1100, 400:650]
         gown_crop = alpha_05[850:1100, 400:650]
@@ -224,6 +267,7 @@ class TestEmpiricalImageTruthfulness:
         assert soft_gown == 44001, f"Expected 44,001 soft gown pixels, got {soft_gown}"
         assert soft_gown / gown_crop.size > 0.70, "Gown should have >70% soft pixels"
 
-        # Total soft pixels in sample_05
-        total_soft = np.sum((alpha_05 >= 10) & (alpha_05 <= 245))
-        assert total_soft == 160824, f"Expected 160,824 soft pixels, got {total_soft}"
+        # Diagnostic transitional alpha range (10 <= alpha <= 245)
+        transitional_pixels = int(np.sum((alpha_05 >= 10) & (alpha_05 <= 245)))
+        assert transitional_pixels == 160824, f"Expected 160,824 transitional pixels, got {transitional_pixels}"
+        assert transitional_pixels <= soft_pixels

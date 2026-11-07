@@ -84,6 +84,13 @@ def test_file_integrity_and_png_format() -> dict[str, Any]:
     if manifest_file.exists():
         manifest_data = json.loads(manifest_file.read_text(encoding="utf-8"))
         log("OBJ-1", f"Manifest verified: target_flat_count={manifest_data.get('target_flat_count')}")
+        spec = manifest_data.get("alpha_metrics_specification", {})
+        assert spec.get("transparent") == "alpha == 0"
+        assert spec.get("soft") == "0 < alpha < 255"
+        assert spec.get("solid") == "alpha == 255"
+        for s in manifest_data.get("samples", []):
+            assert s["transparent_pixels"] + s["soft_pixels"] + s["solid_pixels"] == s["total_pixels"]
+            assert s["transitional_alpha_pixels"] <= s["soft_pixels"]
 
     all_pngs = sorted(VIS_DIR.rglob("*.png"))
     results["total_pngs"] = len(all_pngs)
@@ -298,20 +305,23 @@ def test_empirical_image_truthfulness() -> dict[str, Any]:
     }
     log("OBJ-3", f"sample_02 top-right leak verified: px={px_small}, max_alpha={max_alpha_small} (is 81: {max_alpha_small == 81})")
 
-    # 3.2. Verify sample_04 soft-edge spatial distribution
+    # 3.2. Verify sample_04 soft-edge spatial distribution and disjoint partition
     alpha_04 = np.array(Image.open(TIER3_DIR / "sample_04_small_accessories_mask.png").convert("L"))
     _H, _W = alpha_04.shape
+    total_px_04 = alpha_04.size
 
-    # Heuristic soft range (10 <= alpha <= 245) used in benchmark
-    soft_heur = (alpha_04 >= 10) & (alpha_04 <= 245)
-    total_soft_heur = int(np.sum(soft_heur))
-    upper_soft_heur = int(np.sum(soft_heur[:632, :]))
-    lower_soft_heur = int(np.sum(soft_heur[632:, :]))
-    bottom_264_soft_heur = int(np.sum(soft_heur[1000:, :]))
+    # Standard 3 disjoint groups
+    n_trans_04 = int(np.sum(alpha_04 == 0))
+    n_soft_04 = int(np.sum((alpha_04 > 0) & (alpha_04 < 255)))
+    n_solid_04 = int(np.sum(alpha_04 == 255))
+    assert n_trans_04 + n_soft_04 + n_solid_04 == total_px_04, "sample_04 partition sum mismatch"
 
-    # Pure soft range (0 < alpha < 255)
-    soft_pure = (alpha_04 > 0) & (alpha_04 < 255)
-    total_soft_pure = int(np.sum(soft_pure))
+    # Diagnostic transitional alpha range (10 <= alpha <= 245)
+    transitional_mask_04 = (alpha_04 >= 10) & (alpha_04 <= 245)
+    transitional_px_04 = int(np.sum(transitional_mask_04))
+    upper_trans_04 = int(np.sum(transitional_mask_04[:632, :]))
+    lower_trans_04 = int(np.sum(transitional_mask_04[632:, :]))
+    bottom_264_trans_04 = int(np.sum(transitional_mask_04[1000:, :]))
 
     # Bottom rows Y >= 1200
     bottom_rows = alpha_04[1200:, :]
@@ -319,28 +329,37 @@ def test_empirical_image_truthfulness() -> dict[str, Any]:
     count_255_in_1200 = int(np.sum(bottom_rows == 255))
 
     results["sample_04_distribution"] = {
-        "total_soft_heur_250753": total_soft_heur == 250753,
-        "exact_total_soft_heur": total_soft_heur,
-        "upper_half_soft": upper_soft_heur,
-        "lower_half_soft": lower_soft_heur,
-        "upper_half_percent": round(upper_soft_heur / total_soft_heur * 100, 2),
-        "lower_half_percent": round(lower_soft_heur / total_soft_heur * 100, 2),
-        "bottom_264_soft": bottom_264_soft_heur,
-        "bottom_264_percent": round(bottom_264_soft_heur / total_soft_heur * 100, 2),
+        "transparent_pixels": n_trans_04,
+        "soft_pixels": n_soft_04,
+        "solid_pixels": n_solid_04,
+        "transitional_pixels": transitional_px_04,
+        "total_transitional_250753": transitional_px_04 == 250753,
+        "total_soft_285223": n_soft_04 == 285223,
+        "upper_half_transitional": upper_trans_04,
+        "lower_half_transitional": lower_trans_04,
+        "lower_half_percent": round(lower_trans_04 / transitional_px_04 * 100, 2),
+        "bottom_264_transitional": bottom_264_trans_04,
+        "bottom_264_percent": round(bottom_264_trans_04 / transitional_px_04 * 100, 2),
         "y_ge_1200_max_alpha": max_alpha_1200,
         "y_ge_1200_zero_255_pixels": count_255_in_1200 == 0,
-        "total_soft_pure": total_soft_pure,
+        "partition_sum_ok": n_trans_04 + n_soft_04 + n_solid_04 == total_px_04,
     }
     log(
         "OBJ-3",
-        f"sample_04 soft distribution verified: total={total_soft_heur} (expected 250753: {total_soft_heur == 250753}), "
+        f"sample_04 partition verified: trans={n_trans_04}, soft={n_soft_04}, solid={n_solid_04} (sum={total_px_04}), "
+        f"transitional={transitional_px_04} (250,753 MATCH: {transitional_px_04 == 250753}), "
         f"lower_half={results['sample_04_distribution']['lower_half_percent']}%, "
-        f"bottom_264={results['sample_04_distribution']['bottom_264_percent']}%, "
         f"y>=1200_max_alpha={max_alpha_1200}, zero_255={count_255_in_1200 == 0}",
     )
 
-    # 3.3. Verify sample_05 wing and translucent costume
+    # 3.3. Verify sample_05 wing and translucent costume and disjoint partition
     alpha_05 = np.array(Image.open(TIER3_DIR / "sample_05_translucent_costume_mask.png").convert("L"))
+    total_px_05 = alpha_05.size
+    n_trans_05 = int(np.sum(alpha_05 == 0))
+    n_soft_05 = int(np.sum((alpha_05 > 0) & (alpha_05 < 255)))
+    n_solid_05 = int(np.sum(alpha_05 == 255))
+    assert n_trans_05 + n_soft_05 + n_solid_05 == total_px_05, "sample_05 partition sum mismatch"
+
     # Wing crop: [300, 580, 550, 830]
     wing_crop = alpha_05[300:550, 580:830]
     wing_soft = int(np.sum((wing_crop > 0) & (wing_crop < 255)))
@@ -352,10 +371,13 @@ def test_empirical_image_truthfulness() -> dict[str, Any]:
     gown_soft = int(np.sum((gown_crop > 0) & (gown_crop < 255)))
     gown_soft_ratio = round(gown_soft / gown_crop.size * 100, 2)
 
-    total_soft_05_heur = int(np.sum((alpha_05 >= 10) & (alpha_05 <= 245)))
-    total_soft_05_pure = int(np.sum((alpha_05 > 0) & (alpha_05 < 255)))
+    transitional_px_05 = int(np.sum((alpha_05 >= 10) & (alpha_05 <= 245)))
 
     results["sample_05_transparency"] = {
+        "transparent_pixels": n_trans_05,
+        "soft_pixels": n_soft_05,
+        "solid_pixels": n_solid_05,
+        "transitional_pixels": transitional_px_05,
         "wing_soft_pixels": wing_soft,
         "wing_soft_p10": wing_p10,
         "wing_soft_p50": wing_p50,
@@ -363,14 +385,13 @@ def test_empirical_image_truthfulness() -> dict[str, Any]:
         "wing_has_semi_transparent": wing_soft > 0,
         "gown_soft_pixels": gown_soft,
         "gown_soft_ratio_percent": gown_soft_ratio,
-        "total_soft_heur": total_soft_05_heur,
-        "total_soft_pure": total_soft_05_pure,
+        "partition_sum_ok": n_trans_05 + n_soft_05 + n_solid_05 == total_px_05,
     }
     log(
         "OBJ-3",
-        f"sample_05 transparency verified: wing_soft={wing_soft} (p50={wing_p50}), "
-        f"gown_soft={gown_soft} ({gown_soft_ratio}%), "
-        f"total_soft={total_soft_05_heur}",
+        f"sample_05 partition verified: trans={n_trans_05}, soft={n_soft_05}, solid={n_solid_05} (sum={total_px_05}), "
+        f"transitional={transitional_px_05} (160,824 MATCH: {transitional_px_05 == 160824}), "
+        f"wing_soft={wing_soft} (p50={wing_p50}), gown_soft={gown_soft} ({gown_soft_ratio}%)",
     )
 
     return results
@@ -396,8 +417,15 @@ def main() -> None:
     print(f"Color modes: {res1['modes_summary']}")
     print("Script robustness tests: ALL PASSED")
     print(f"sample_02 neon leak: VERIFIED (max alpha = {res3['sample_02_leak']['max_alpha_box_100x198']})")
-    print(f"sample_04 soft pixel exact count: {res3['sample_04_distribution']['exact_total_soft_heur']} (250,753 MATCH: {res3['sample_04_distribution']['total_soft_heur_250753']})")
-    print(f"sample_05 gown semi-transparent ratio: {res3['sample_05_transparency']['gown_soft_ratio_percent']}%")
+    print(
+        f"sample_04 alpha: soft={res3['sample_04_distribution']['soft_pixels']} (0<a<255) | "
+        f"transitional={res3['sample_04_distribution']['transitional_pixels']} (10<=a<=245, MATCH: {res3['sample_04_distribution']['total_transitional_250753']})"
+    )
+    print(
+        f"sample_05 alpha: soft={res3['sample_05_transparency']['soft_pixels']} (0<a<255) | "
+        f"transitional={res3['sample_05_transparency']['transitional_pixels']} (10<=a<=245) | "
+        f"gown soft ratio: {res3['sample_05_transparency']['gown_soft_ratio_percent']}%"
+    )
     print("=" * 80)
 
 

@@ -207,6 +207,11 @@ def test_postprocess_mask_geometry_and_alpha_merge() -> None:
 
     assert diag["dimensions"] == [400, 600]
     assert diag["alpha_extrema"] == [0, 255]
+    total_px = 400 * 600
+    assert diag["total_pixels"] == total_px
+    assert diag["transparent_pixels"] + diag["soft_pixels"] + diag["solid_pixels"] == total_px
+    assert diag["transitional_alpha_pixels"] <= diag["soft_pixels"]
+    assert pytest.approx(diag["transparent_ratio"] + diag["soft_ratio"] + diag["solid_ratio"]) == 1.0
 
 
 def test_background_provider_factory() -> None:
