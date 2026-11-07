@@ -12,8 +12,9 @@
 **Commit kiểm toán đối kháng Cycle 1 Reviewer R3 trên remote:** `5c343418dee88169583d76bdded1792b8dc844d6` (Đã đẩy lên remote origin)  
 **Commit hiệu đính Implementer trên remote:** `1ffeb67bd6da24d2155169621d01d35050befdc3` (Đã đẩy lên remote origin)  
 **Commit kiểm toán đối kháng Reviewer R1 trên remote:** `8700382693f447d296258e021b8a989f59a22fc6` (Đã đẩy lên remote origin)  
-**Tác giả:** worker_05b_2 (Implementer), reviewer_05b_r1 (Reviewer R1) & reviewer_05b_r2 (Reviewer R2)  
-**Ngày lập & Cập nhật:** 07/11/2026 (Hiệu đính Đối kháng Hoàn thiện R1–R6 — Round 2)  
+**Commit kiểm toán đối kháng Reviewer R2 trên remote:** `2362189538175e439bad466da8eb5fd1871b5799` (Đã đẩy lên remote origin)  
+**Tác giả:** worker_05b_2 (Implementer), reviewer_05b_r1 (Reviewer R1), reviewer_05b_r2 (Reviewer R2) & reviewer_05b_r3 (Reviewer R3)  
+**Ngày lập & Cập nhật:** 07/11/2026 (Hiệu đính Đối kháng Hoàn thiện R1–R6 — Round 3 Final)  
 **Chế độ tuân thủ:** Integrity Mode Development — Cam kết trung thực tuyệt đối, không gian lận, không giả lập kết quả.
 
 ---
@@ -523,11 +524,13 @@ Sau khi mô hình ONNX xuất ra tensor mặt nạ thô `(1, 1, 1024, 1024)`:
 3. **Thu phóng Trở lại Tọa độ Gốc (Bilinear Unpadding):** Phóng to `cropped_prob` trở lại kích thước ban đầu $(W_{\text{orig}}, H_{\text{orig}})$ bằng phép nội suy song tuyến tính (`Image.Resampling.BILINEAR`). Thao tác này khôi phục lưới tọa độ mặt nạ về đúng độ phân giải gốc của ảnh ban đầu (kết hợp với đệm đối xứng đạt sai số hình học sub-pixel $\le 0.081\text{ px}$; phân định rõ đây là bảo toàn hình học, không phải chứng minh chất lượng phân vùng AI).
 4. **Hàm Chuyển đổi Dải Alpha Mềm (Continuous Soft Alpha Ramp):**
    Thay vì cắt ngưỡng nhị phân cứng ở 0.5 gây răng cưa, áp dụng hàm chuyển tiếp làm mịn:
-   $$A(x, y) = \begin{cases} 
+   $$
+   A(x, y) = \begin{cases} 
    0 & \text{khi } p(x, y) \le T_{\text{low}} \\
    255 & \text{khi } p(x, y) \ge T_{\text{high}} \\
    \text{round}\left(255 \cdot \frac{p(x, y) - T_{\text{low}}}{T_{\text{high}} - T_{\text{low}}}\right) & \text{khi } T_{\text{low}} < p(x, y) < T_{\text{high}}
-   \end{cases}$$
+   \end{cases}
+   $$
    Với ngưỡng tiêu chuẩn kiểm nghiệm: $T_{\text{low}} = 0.05$ và $T_{\text{high}} = 0.95$.
 
 ```python
@@ -675,7 +678,7 @@ def validate_alpha_matte(
 | **`max_alpha >= 250`** | Đảm bảo nhân vật có khối lượng cơ thể đặc ruột (opaque solid core $\ge 250/255$), ngăn chặn lỗi mô hình biến toàn bộ nhân vật thành bóng ma mờ ảo. | **Nhân vật dạng linh hồn, ảo ảnh hoặc cánh năng lượng:** Các thiết kế Miku dạng hologram trong suốt, linh hồn mờ ảo hoặc cánh cơ khí bán trong suốt có chủ đích nghệ thuật với $\alpha_{\max} < 240$. | Thiết lập cờ cấu hình `allow_translucent_character=True` trong `kwargs` khi xử lý các asset hiệu ứng đặc biệt để hạ ngưỡng kiểm tra xuống $180$. |
 | **`bbox >= 64x64`** | Loại trừ các mảnh vụn nhiễu cô lập (dust/noise artifacts) phát sinh khi nền phức tạp bị bóc nhầm nhưng nhân vật chính đã bị xóa sạch. | **Sticker chibi siêu nhỏ hoặc phụ kiện rời:** Các icon cảm xúc mini (32x32), sticker linh vật thu nhỏ, hoặc phụ kiện trôi nổi trong các bộ sprite phụ trợ. | Chuyển ngưỡng tuyệt đối $64\text{px}$ sang ngưỡng thích ứng tỷ lệ: $\text{min\_dim} \ge \max(32, 0.08 \times \min(W_{\text{orig}}, H_{\text{orig}}))$. |
 | **`coverage in [0.05, 0.98]`** | Ngưỡng chặn diện tích nhân vật: $< 5\%$ cho thấy nhân vật bị cắt mất gần hết; $> 98\%$ cho thấy phông nền ngoại cảnh chưa được loại bỏ. | **Ảnh toàn cảnh viễn cảnh (Extreme Wide-shot) hoặc Tranh tràn viền (Full-bleed):** Nhân vật đứng rất xa giữa phong cảnh chỉ chiếm $3-4\%$ diện tích; hoặc tranh minh họa poster nhân vật chiếm $98.5\%$ diện tích canvas. | Thu thập tập mẫu 500 ảnh sprite Miku để vẽ đường cong phân phối diện tích thực tế; cho phép điều chỉnh dải ngưỡng theo tỷ lệ khung hình và nhãn tư thế (`AnchorType`). |
-| **`soft_alpha_distribution`** | Kiểm tra sự tồn tại của điểm ảnh chuyển tiếp ($10 \le \alpha \le 245$) nhằm bảo đảm dải viền mềm mại, không bị răng cưa (aliasing) trên tóc mai và vải mỏng. | **Tranh Pixel Art hoặc Cel-shading cổ điển:** Tranh vẽ phong cách retro pixel art hoặc tranh cel-shading cố ý giữ nét mực viền nhị phân cứng 1-bit theo phong cách nghệ thuật tác giả. | Thiết kế cổng này dưới dạng **Cảnh báo Chẩn đoán (Diagnostic Warning)** ghi vào metadata `warnings: ["soft_alpha_missing"]` thay vì ném ngoại lệ từ chối cứng (Hard Rejection). |
+| **`soft_alpha_distribution`** | Kiểm tra sự tồn tại của điểm ảnh chuyển tiếp ($10 \le \alpha \le 245$) nhằm hướng tới dải viền mềm mại, hạn chế răng cưa (aliasing) trên tóc mai và vải mỏng. | **Tranh Pixel Art hoặc Cel-shading cổ điển:** Tranh vẽ phong cách retro pixel art hoặc tranh cel-shading cố ý giữ nét mực viền nhị phân cứng 1-bit theo phong cách nghệ thuật tác giả. | Thiết kế cổng này dưới dạng **Cảnh báo Chẩn đoán (Diagnostic Warning)** ghi vào metadata `warnings: ["soft_alpha_missing"]` thay vì ném ngoại lệ từ chối cứng (Hard Rejection). |
 
 ### 4.7 Kế hoạch Benchmark Chất lượng Phân vùng AI & Giới hạn của Các Chỉ số Định lượng
 
@@ -693,9 +696,9 @@ Nhằm đánh giá năng lực bóc tách thực tế của mô hình IS-Net Ani
 
 | Chỉ số Định lượng | Công thức Toán học | Ý nghĩa Đánh giá | Giới hạn Kỹ thuật Cốt lõi (Metric Limitations) |
 |---|---|---|---|
-| **IoU (Intersection over Union / Jaccard Index)** | $\text{IoU} = \frac{\|A \cap B\|}{\|A \cup B\|}$ | Đo lường tỷ lệ trùng khớp diện tích tổng thể giữa mặt nạ dự đoán $A$ và mặt nạ chuẩn $B$. | **Quá nhạy với diện tích lớn, bỏ qua chi tiết nhỏ:** Do phần thân nhân vật chiếm tới $90\%$ diện tích, một mô hình làm đứt gãy toàn bộ sợi tóc mai 2px vẫn có thể đạt điểm $\text{IoU} > 0.96$. Không phản ánh đúng chất lượng viền tóc. |
-| **Dice / F1-Score** | $\text{Dice} = \frac{2\|A \cap B\|}{\|A\| + \|B\|}$ | Đánh giá độ chính xác phân loại điểm ảnh foreground với trọng số cân bằng giữa Precision và Recall. | **Bị chi phối bởi vùng đặc ruột:** Tương tự IoU, điểm số Dice bị chi phối áp đảo bởi các mảng màu lớn bên trong cơ thể nhân vật, ít nhạy cảm với lỗi răng cưa biên hoặc mất phụ kiện mảnh. |
-| **Boundary F-score ($F_B$)** | $F_B = \frac{2 \cdot P_B \cdot R_B}{P_B + R_B}$ trên dải biên $\pm d\text{ px}$ | Đo lường độ chính xác phân vùng chỉ riêng tại dải viền bao quanh đường biên tóc và trang phục trong phạm vi bán kính $d$ (ví dụ $d=2\text{px}$). | **Phụ thuộc vào tham số bán kính giãn nở $d$:** Nếu đặt $d$ quá lớn, chỉ số mất tính nhạy với sợi tóc mảnh; nếu đặt $d$ quá nhỏ ($1\text{px}$), sai số làm tròn số thực có thể khiến điểm số sụt giảm nghiêm trọng dù mắt người nhìn vẫn hoàn hảo. |
+| **IoU (Intersection over Union / Jaccard Index)** | $\text{IoU} = \frac{\vert A \cap B \vert}{\vert A \cup B \vert}$ | Đo lường tỷ lệ trùng khớp diện tích tổng thể giữa mặt nạ dự đoán $A$ và mặt nạ chuẩn $B$. | **Quá nhạy với diện tích lớn, bỏ qua chi tiết nhỏ:** Do phần thân nhân vật chiếm tới $90\%$ diện tích, một mô hình làm đứt gãy toàn bộ sợi tóc mai 2px vẫn có thể đạt điểm $\text{IoU} > 0.96$. Không phản ánh đúng chất lượng viền tóc. |
+| **Dice / F1-Score** | $\text{Dice} = \frac{2\vert A \cap B \vert}{\vert A \vert + \vert B \vert}$ | Đánh giá độ chính xác phân loại điểm ảnh foreground với trọng số cân bằng giữa Precision và Recall. | **Bị chi phối bởi vùng đặc ruột:** Tương tự IoU, điểm số Dice bị chi phối áp đảo bởi các mảng màu lớn bên trong cơ thể nhân vật, ít nhạy cảm với lỗi răng cưa biên hoặc mất phụ kiện mảnh. |
+| **Boundary F-score ($F_B$)** | $F_B = \frac{2 \cdot P_B \cdot R_B}{P_B + R_B}$ trên dải biên $\pm d\text{ px}$ | Đo lường độ chính xác phân vùng chỉ riêng tại dải viền bao quanh đường biên tóc và trang phục trong phạm vi bán kính $d$ (ví dụ $d=2\text{px}$). | **Phụ thuộc vào tham số bán kính giãn nở $d$:** Nếu đặt $d$ quá lớn, chỉ số mất tính nhạy với sợi tóc mảnh; nếu đặt $d$ quá nhỏ ($1\text{px}$), sai số làm tròn số thực có thể khiến điểm số sụt giảm nghiêm trọng dù mắt người nhìn vẫn liền mạch, đạt yêu cầu thị giác. |
 | **Đánh giá Trực quan Lỗi Viền Cạnh (Visual Edge Artifact Assessment)** | Chấm điểm chuyên gia (Expert Visual Audit) trên thang đo Likert 1–5 | Kiểm tra hiện tượng lem màu viền cũ (color bleeding), quầng sáng (halo), răng cưa (aliasing) và viền xơ xác khi ghép nhân vật lên 2 nền đối lập: đen tuyền `(0,0,0)` và trắng tinh `(255,255,255)`. | **Mang tính chủ quan và khó tự động hóa:** Đòi hỏi mắt nhìn thẩm mỹ của chuyên gia đồ họa, không thể tích hợp làm cổng kiểm thử tự động trong pipeline CI/CD hàng loạt. |
 
 #### 3. Tuyên bố Bắt buộc về Dữ liệu Đo kiểm Định lượng (Ground-Truth Mask Caveat):
@@ -1296,6 +1299,9 @@ Nhằm phục vụ công tác thanh tra, kiểm toán độc lập của Owner v
 - **Commit kiểm toán đối kháng Reviewer R1:** `8700382693f447d296258e021b8a989f59a22fc6`
 - **Đường dẫn Commit Reviewer R1 trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/8700382693f447d296258e021b8a989f59a22fc6`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/8700382693f447d296258e021b8a989f59a22fc6)
+- **Commit kiểm toán đối kháng Reviewer R2:** `2362189538175e439bad466da8eb5fd1871b5799`
+- **Đường dẫn Commit Reviewer R2 trên GitHub:**  
+  [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/2362189538175e439bad466da8eb5fd1871b5799`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/2362189538175e439bad466da8eb5fd1871b5799)
 - **Đường dẫn tệp báo cáo trực tiếp trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/blob/docs/m0-task-05b-architecture-survey/docs/architecture/phase-05b-isnet-anime-survey.md`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/blob/docs/m0-task-05b-architecture-survey/docs/architecture/phase-05b-isnet-anime-survey.md)
 
