@@ -11,6 +11,8 @@ dependencies = [
     "pydantic-settings>=2.4.0",
     "aiosqlite>=0.20.0",
     "pillow>=13.0.0",
+    "numpy>=1.26.0",
+    "onnxruntime>=1.19.0",
 ]
 
 [project.optional-dependencies]
@@ -45,3 +47,7 @@ strict = false
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "onnxruntime"
+ignore_missing_imports = true
