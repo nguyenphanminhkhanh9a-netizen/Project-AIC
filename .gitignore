@@ -57,3 +57,8 @@ Thumbs.db
 .vscode/
 .idea/
 *.tmp
+
+# AI / ML Models & Heavy Test Fixtures
+*.onnx
+backend/tests/fixtures/real_anime/
+data/tier3_output/

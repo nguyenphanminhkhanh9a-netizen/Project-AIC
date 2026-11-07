@@ -112,5 +112,31 @@ class PipelineConfig(BaseSettings):
     worker_concurrency: int = Field(default=1, description="Sequential background processing")
     max_queue_size: int = Field(default=100)
 
+    # Background Removal & IS-Net ONNX Configuration
+    use_mock_bg_provider: bool = Field(
+        default=True,
+        description="True to use mock heuristic provider (default for offline/CI); False for real IS-Net ONNX",
+    )
+    isnet_anime_model_path: Path = Field(
+        default=Path.home() / ".cache" / "project_aic" / "models" / "isnetis.onnx",
+        description="Path to local isnetis.onnx model file",
+    )
+    isnet_model_sha256: str = Field(
+        default="f15622d853e8260172812b657053460e20806f04b9e05147d49af7bed31a6e99",
+        description="Expected SHA-256 checksum for isnetis.onnx",
+    )
+    isnet_expected_sha256: str = Field(
+        default="f15622d853e8260172812b657053460e20806f04b9e05147d49af7bed31a6e99",
+        description="Alias for expected SHA-256 checksum",
+    )
+    isnet_model_expected_size: int = Field(
+        default=176_069_933,
+        description="Expected size in bytes for isnetis.onnx (176,069,933 bytes)",
+    )
+    onnx_intra_op_threads: int = Field(
+        default=4,
+        description="Maximum intra-op thread count for ONNX Runtime CPU session",
+    )
+
 
 pipeline_config = PipelineConfig()
