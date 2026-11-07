@@ -10,16 +10,17 @@
 **Commit kiểm toán đối kháng Reviewer R1 trên remote:** `f8590bd97b17678aac2c05699b179711a485c06b` (Đã đẩy lên remote origin)  
 **Commit kiểm toán đối kháng Reviewer R2 trên remote:** `7949c0afe55c7c504689fc2e44d00ccf829a709f` (Đã đẩy lên remote origin)  
 **Commit kiểm toán đối kháng Reviewer R3 trên remote:** `5c343418dee88169583d76bdded1792b8dc844d6` (Đã đẩy lên remote origin)  
-**Tác giả:** worker_05b_2 (Teamwork Subagent — Final Documentation Implementer)  
-**Ngày lập & Cập nhật:** 07/11/2026 (Hiệu đính Cuối cùng R1–R5 Chuẩn hóa Toàn diện)  
+**Commit hiệu đính Implementer trên remote:** `1ffeb67bd6da24d2155169621d01d35050befdc3` (Đã đẩy lên remote origin)  
+**Tác giả:** worker_05b_2 (Implementer) & reviewer_05b_r1 (Adversarial Reviewer)  
+**Ngày lập & Cập nhật:** 07/11/2026 (Hiệu đính Đối kháng Hoàn thiện R1–R6)  
 **Chế độ tuân thủ:** Integrity Mode Development — Cam kết trung thực tuyệt đối, không gian lận, không giả lập kết quả.
 
 ---
 
 ## MỤC LỤC CHI TIẾT
 
-1. [TỔNG QUAN KIẾN TRÚC & TÓM TẮT ĐIỀU HÀNH (Executive Summary)](#1-t%E1%BB%95ng-quan-ki%E1%BA%BFn-tr%C3%BAc--t%C3%B3m-t%E1%BA%AFt-%C4%91i%E1%BB%81u-h%C3%A0nh)
-2. [KHẢO SÁT KIẾN TRÚC CƠ SỞ & KIỂM TOÁN HỢP ĐỒNG HIỆN HỮU (Baseline Architecture Audit)](#2-kh%E1%BA%A3o-s%C3%A1t-ki%E1%BA%BFn-tr%C3%BAc-c%C6%A1-s%E1%BB%9F--ki%E1%BB%83m-to%C3%A1n-h%E1%BB%A3p-%C4%91%E1%BB%93ng-hi%E1%BB%87n-h%E1%BB%AFu)
+1. [TỔNG QUAN KIẾN TRÚC & TÓM TẮT ĐIỀU HÀNH](#1-t%E1%BB%95ng-quan-ki%E1%BA%BFn-tr%C3%BAc-t%C3%B3m-t%E1%BA%AFt-%C4%91i%E1%BB%81u-h%C3%A0nh)
+2. [KHẢO SÁT KIẾN TRÚC CƠ SỞ & KIỂM TOÁN HỢP ĐỒNG HIỆN HỮU (Baseline Architecture Audit)](#2-kh%E1%BA%A3o-s%C3%A1t-ki%E1%BA%BFn-tr%C3%BAc-c%C6%A1-s%E1%BB%9F-ki%E1%BB%83m-to%C3%A1n-h%E1%BB%A3p-%C4%91%E1%BB%93ng-hi%E1%BB%87n-h%E1%BB%AFu-baseline-architecture-audit)
    - 2.1 Protocol `BackgroundRemovalProvider` và Hợp đồng Dữ liệu
    - 2.2 Kiểm toán Bộ tách nền Giả lập `MockBackgroundRemovalProvider`
    - 2.3 Luồng Điều phối 10 Giai đoạn của `PipelineWorker`
@@ -28,16 +29,16 @@
    - 2.6 Cổng Kiểm soát Chất lượng Tổng hợp (`CQSQualityGate`) và Lọc Trùng lặp
    - 2.7 Tính Bất biến Lưu trữ Nguyên tử và Cô lập Trạng thái Khách (`READY Invariant`)
    - 2.8 Hiện trạng Bộ Kiểm thử Cơ sở (218/218 Tests Passing - Pipeline Core & Mock)
-3. [NGUỒN GỐC MÔ HÌNH, BẢN QUYỀN & XÁC MINH MÃ HÓA (R1 Model Provenance, Licensing & Pinning)](#3-ngu%E1%BB%93n-g%E1%BB%91c-m%C3%B4-h%C3%ACnh-b%E1%BA%A3n-quy%E1%BB%81n--x%C3%A1c-minh-m%C3%A3-h%C3%B3a)
+3. [NGUỒN GỐC MÔ HÌNH, BẢN QUYỀN & XÁC MINH MÃ HÓA (R1 Model Provenance, Licensing & Pinning)](#3-ngu%E1%BB%93n-g%E1%BB%91c-m%C3%B4-h%C3%ACnh-b%E1%BA%A3n-quy%E1%BB%81n-x%C3%A1c-minh-m%C3%A3-h%C3%B3a-r1-model-provenance-licensing-pinning)
    - 3.1 Nguồn gốc Học thuật: IS-Net và Bộ dữ liệu DIS5K (ECCV 2022)
    - 3.2 Tinh chỉnh Chuyên biệt Cho Anime: SkyTNT (`anime-segmentation`)
    - 3.3 Hệ sinh thái và Các Dự án Kế thừa
    - 3.4 Ma trận Kiểm toán Bản quyền Đa tầng, Bằng chứng Tác giả & Phân tích Rủi ro Pháp lý
-   - 3.5 Chiến lược Kiến trúc "Bring-Your-Own-Model" (BYOM)
+   - 3.5 Chiến lược Kiến trúc "Bring-Your-Own-Model" (BYOM) & Giới Hạn Pháp Lý
    - 3.6 Ghim Phiên bản Ổn định Hugging Face, Thông số Kỹ thuật & Dấu vân tay Mật mã SHA-256
    - 3.7 Thuật toán Xác minh Băm SHA-256 Dạng Luồng và Cơ chế Cách ly Sự cố
    - 3.8 Quy định Tuyệt đối: Cấm Tự động Tải Mô hình khi Khởi động hoặc Import
-4. [CHẤT LƯỢNG HÌNH ẢNH ANIME & KIẾN TRÚC MẶT NẠ ALPHA (R2 Quality & Geometry Separation)](#4-ch%E1%BA%A5t-l%C6%B0%E1%BB%A3ng-h%C3%ACnh-%E1%BA%A3nh-anime--ki%E1%BA%BFn-tr%C3%BAc-m%E1%BA%B7t-n%E1%BA%A1-alpha)
+4. [CHẤT LƯỢNG HÌNH ẢNH ANIME & KIẾN TRÚC MẶT NẠ ALPHA (Quality & Alpha Matting)](#4-ch%E1%BA%A5t-l%C6%B0%E1%BB%A3ng-h%C3%ACnh-%E1%BA%A3nh-anime-ki%E1%BA%BFn-tr%C3%BAc-m%E1%BA%B7t-n%E1%BA%A1-alpha-quality-alpha-matting)
    - 4.1 Phân tích 6 Trường hợp Biên (Edge Cases) Đặc thù Của Tranh Anime
    - 4.2 Thiết kế Tiền xử lý: Phép thử Bảo toàn Hình học (Geometry Preservation Test) vs. Chất lượng Phân vùng AI
    - 4.3 Thiết kế Hậu xử lý: Mặt nạ Alpha Mềm (Soft Alpha) và Khôi phục Tọa độ Gốc
@@ -46,7 +47,7 @@
    - 4.6 4 Cổng Kiểm chuẩn Đầu ra: Cơ sở Lý thuyết, Điều kiện Loại bỏ Nhầm & Phương pháp Hiệu chuẩn
    - 4.7 Kế hoạch Benchmark Chất lượng Phân vùng AI & Giới hạn của Các Chỉ số Định lượng
    - 4.8 BẢNG PHÂN ĐỊNH BẮT BUỘC: Sự thật Thực nghiệm vs. Giả thuyết Thiết kế
-5. [DỰ PHÒNG THIẾT BỊ, QUẢN TRỊ TÀI NGUYÊN & ĐỒNG THỜI (R3 Runtime Fallback & Benchmark Plan)](#5-d%E1%BB%B1-ph%C3%B2ng-thi%E1%BA%BFt-b%E1%BB%8B-qu%E1%BA%A3n-tr%E1%BB%8B-t%C3%A0i-nguy%C3%AAn--%C4%91%E1%BB%93ng-th%E1%BB%9Di)
+5. [DỰ PHÒNG THIẾT BỊ, QUẢN TRỊ TÀI NGUYÊN & ĐỒNG THỜI (R2 GPU Fallback & R3 Benchmark Plan)](#5-d%E1%BB%B1-ph%C3%B2ng-thi%E1%BA%BFt-b%E1%BB%8B-qu%E1%BA%A3n-tr%E1%BB%8B-t%C3%A0i-nguy%C3%AAn-%C4%91%E1%BB%93ng-th%E1%BB%9Di-r2-gpu-fallback-r3-benchmark-plan)
    - 5.1 Chiến lược Phân tầng Thiết bị Thực thi (DirectML trên DirectX 12 -> CPU)
    - 5.2 Ràng buộc Cấu hình Bắt buộc Của DirectML (`enable_mem_pattern = False`)
    - 5.3 Cô lập Lỗi Khởi tạo GPU Hai Giai đoạn (Hai tầng Try-Catch Phục hồi)
@@ -55,17 +56,17 @@
    - 5.6 Vòng đời Phiên Thực thi, Khởi tạo Lười (Lazy Loading) và Kiểm soát Đồng thời
    - 5.7 Đề Xuất Thiết Kế Cơ Chế Phục Hồi khi Tràn Bộ Nhớ Đồ Họa (Proposed GPU OOM to CPU Fallback - Chưa Triển Khai)
    - 5.8 Bảo tồn Tính Trừu tượng và Nhà cung cấp Giả lập Cho Môi trường CI
-6. [KẾ HOẠCH KIỂM THỬ ĐA TẦNG & CỔNG CHẤT LƯỢNG (R4 Multi-Tier Test Plan & Quality Gate)](#6-k%E1%BA%BF-ho%E1%BA%A1ch-ki%E1%BB%83m-th%E1%BB%AD-%C4%91a-t%E1%BA%A7ng)
+6. [KẾ HOẠCH KIỂM THỬ ĐA TẦNG & CỔNG CHẤT LƯỢNG (R4 Multi-Tier Test Plan & Quality Gate)](#6-k%E1%BA%BF-ho%E1%BA%A1ch-ki%E1%BB%83m-th%E1%BB%AD-%C4%91a-t%E1%BA%A7ng-c%E1%BB%95ng-ch%E1%BA%A5t-l%C6%B0%E1%BB%A3ng-r4-multi-tier-test-plan-quality-gate)
    - 6.1 Tầng 1: Kiểm thử Đơn vị với Mock Provider (Đã Chạy & Vượt Qua - RUN)
    - 6.2 Tầng 2: Kiểm thử Tích hợp CPU ONNX với Mô hình Nhân tạo 2KB (Chưa Chạy - NOT RUN)
    - 6.3 Tầng 3: Kiểm thử Tích hợp Mô hình Thực IS-Net trên CPU (Chưa Chạy - NOT RUN)
    - 6.4 Tầng 4: Kiểm thử Phần cứng DirectML GPU trên Windows (Chưa Chạy - NOT RUN)
-7. [RỦI RO KỸ THUẬT, CÁC CHẾ ĐỘ THẤT BẠI & BIỆN PHÁP GIẢM THIỂU](#7-r%E1%BB%A7i-ro-k%E1%BB%B9-thu%E1%BA%ADt-c%C3%A1c-ch%E1%BA%BF-%C4%91%E1%BB%99-th%E1%BA%A5t-b%E1%BA%A1i--bi%E1%BB%87n-ph%C3%A1p-gi%E1%BA%A3m-thi%E1%BB%83u)
-8. [DANH MỤC TỆP DỰ KIẾN, LỘ TRÌNH TRIỂN KHAI & XÁC MINH GIT REMOTE (R5 Git Verification)](#8-danh-m%E1%BB%A5c-t%E1%BB%87p-d%E1%BB%B1-ki%E1%BA%BFn--l%E1%BB%99-tr%C3%ACnh-tri%E1%BB%83n-khai-cho-phase-05b)
+7. [RỦI RO KỸ THUẬT, CÁC CHẾ ĐỘ THẤT BẠI & BIỆN PHÁP GIẢM THIỂU](#7-r%E1%BB%A7i-ro-k%E1%BB%B9-thu%E1%BA%ADt-c%C3%A1c-ch%E1%BA%BF-%C4%91%E1%BB%99-th%E1%BA%A5t-b%E1%BA%A1i-bi%E1%BB%87n-ph%C3%A1p-gi%E1%BA%A3m-thi%E1%BB%83u)
+8. [DANH MỤC TỆP DỰ KIẾN, LỘ TRÌNH TRIỂN KHAI & XÁC MINH GIT REMOTE (R6 Git & Scope Restrictions)](#8-danh-m%E1%BB%A5c-t%E1%BB%87p-d%E1%BB%B1-ki%E1%BA%BFn-l%E1%BB%99-tr%C3%ACnh-tri%E1%BB%83n-khai-x%C3%A1c-minh-git-remote-r6-git-scope-restrictions)
    - 8.1 Danh mục Tệp Dự kiến
    - 8.2 Lộ trình Triển khai Đề xuất
-   - 8.3 Xác minh Git Remote & Khẳng định Giới hạn Phạm vi (Zero Code Modification Guardrail)
-9. [TÓM TẮT DỄ HIỂU DÀNH CHO SẾP (Plain Language Summary for Owner)](#9-t%C3%B3m-t%E1%BA%AFt-d%E1%BB%85-hi%E1%BB%83u-d%C3%A0nh-cho-s%E1%BA%BFp)
+   - 8.3 Xác minh Git Remote & Khẳng định Giới hạn Phạm vi (R6 Git & Scope Restrictions)
+9. [TÓM TẮT DỄ HIỂU DÀNH CHO SẾP (R5 Plain Language Summary for Owner)](#9-t%C3%B3m-t%E1%BA%AFt-d%E1%BB%85-hi%E1%BB%83u-d%C3%A0nh-cho-s%E1%BA%BFp-r5-plain-language-summary-for-owner)
 
 ---
 
@@ -132,12 +133,12 @@ Mục tiêu kỹ thuật cốt lõi của **Phase 0.5B** là nâng cấp hệ th
 ### Các Cam kết Kiến trúc Quyết định:
 1. **Tuân thủ Tuyệt đối Hợp đồng Hiện hữu:** Giữ nguyên vẹn Protocol `BackgroundRemovalProvider` và lớp `MockBackgroundRemovalProvider`. Bộ kiểm thử CI và môi trường phát triển ngoại tuyến tiếp tục chạy 100% không phụ thuộc mô hình nặng hay GPU.
 2. **Bảo mật Chuỗi cung ứng (Supply Chain Security):** Áp dụng kiến trúc **BYOM (Bring-Your-Own-Model)**. Không đóng gói kèm file nhị phân mô hình trong kho mã nguồn Git. Mô hình chỉ được nạp sau khi vượt qua thuật toán kiểm tra mã băm mật mã **SHA-256 dạng luồng (streaming)** trước khi chuyển cho runtime ONNX. Tuyệt đối nghiêm cấm việc tự ý tải mô hình từ mạng khi `import` module hoặc khi ứng dụng khởi động.
-3. **Chất lượng Tách Viền Đỉnh cao cho Phong cách Anime:** Sử dụng kỹ thuật đệm khung (letterboxing) giữ nguyên tỷ lệ khung hình thực, không kéo giãn làm biến dạng giải phẫu nhân vật Miku; tạo dải alpha mềm liên tục $A \in [0.05, 0.95]$ để bắt trọn từng sợi tóc mai (ahoge), phụ kiện nơ bay, vòng hào quang tóc (angel rings) và khăn voan bán trong suốt; tích hợp 4 cổng kiểm soát chất lượng mặt nạ đầu ra để loại bỏ hoàn toàn các trường hợp ảnh đen/trắng bất thường.
+3. **Định Hướng Chất Lượng Tách Viền Anime & Mục Tiêu Thiết Kế:** Đề xuất kỹ thuật đệm khung (letterboxing) giữ nguyên tỷ lệ khung hình thực, không kéo giãn làm biến dạng giải phẫu nhân vật Miku; thiết kế dải alpha mềm liên tục $A \in [0.05, 0.95]$ với mục tiêu tối ưu khả năng bảo tồn chi tiết sợi tóc mai (ahoge), phụ kiện nơ bay, vòng hào quang tóc (angel rings) và khăn voan bán trong suốt (chất lượng phân vùng thực tế sẽ được kiểm chứng thực nghiệm bằng tập benchmark ở Phase 0.5B); tích hợp 4 cổng kiểm soát chất lượng mặt nạ đầu ra nhằm phát hiện và lọc bỏ các trường hợp ảnh đen/trắng bất thường.
 4. **Đề Xuất Thiết Kế Dự Phòng Phần Cứng (Proposed Fallback Design):** Đề xuất thiết kế cô lập lỗi khởi tạo DirectML bằng khối try-catch hai giai đoạn (khởi tạo phiên và suy luận khởi động `warmup`). Khi phát hiện sự cố thiếu tính năng phần cứng hoặc lỗi DirectML có thể bắt được, hệ thống đề xuất chuyển sang CPU đa luồng. *Lưu ý phân định quan trọng:* Cơ chế này hiện là **đề xuất thiết kế kiến trúc cho Phase 0.5B, CHƯA ĐƯỢC TRIỂN KHAI hay kiểm chứng trong codebase hiện tại**; không bảo đảm mọi lỗi driver DirectX 12 hoặc tràn bộ nhớ VRAM đều có thể khôi phục an toàn (các lỗi phần cứng nghiêm trọng, TDR reset hoặc cạn kiệt RAM hệ thống vẫn có thể làm dừng worker).
 
 ---
 
-## 2. KHẢO SÁT KIẾN TRÚC CƠ SỞ & KIỂM TOÁN HỢP ĐỒNG HIỆN HỮU (R1 BASELINE ARCHITECTURE AUDIT)
+## 2. KHẢO SÁT KIẾN TRÚC CƠ SỞ & KIỂM TOÁN HỢP ĐỒNG HIỆN HỮU (Baseline Architecture Audit)
 
 Khảo sát được thực hiện trực tiếp trên nhánh `main` tại commit `fb5b21f0fa59ddc4983d29f1500f5672d3b7205e` (sau khi hoàn tất tích hợp PR #5 của Task 0.5A).
 
@@ -266,7 +267,7 @@ Hệ thống hiện sở hữu **218 bài kiểm thử tự động**, chia thà
 
 ---
 
-## 3. NGUỒN GỐC MÔ HÌNH, BẢN QUYỀN & XÁC MINH MÃ HÓA (R2 MODEL PROVENANCE & VERIFICATION)
+## 3. NGUỒN GỐC MÔ HÌNH, BẢN QUYỀN & XÁC MINH MÃ HÓA (R1 Model Provenance, Licensing & Pinning)
 
 ### 3.1 Nguồn gốc Học thuật: IS-Net và Bộ dữ liệu DIS5K (ECCV 2022)
 Kiến trúc cốt lõi của mô hình IS-Net xuất phát từ công trình nghiên cứu thị giác máy tính đỉnh cao:
@@ -414,7 +415,7 @@ Một lỗi kiến trúc rất phổ biến ở các thư viện mã nguồn m�
 
 ---
 
-## 4. CHẤT LƯỢNG HÌNH ẢNH ANIME & KIẾN TRÚC MẶT NẠ ALPHA (R3 QUALITY & ALPHA MATTING)
+## 4. CHẤT LƯỢNG HÌNH ẢNH ANIME & KIẾN TRÚC MẶT NẠ ALPHA (Quality & Alpha Matting)
 
 ### 4.1 Phân tích 6 Trường hợp Biên (Edge Cases) Đặc thù Của Tranh Anime
 
@@ -718,7 +719,7 @@ Nhằm đánh giá năng lực bóc tách thực tế của mô hình IS-Net Ani
 
 ---
 
-## 5. DỰ PHÒNG THIẾT BỊ, QUẢN TRỊ TÀI NGUYÊN & ĐỒNG THỜI (R4 RUNTIME FALLBACK & CONCURRENCY)
+## 5. DỰ PHÒNG THIẾT BỊ, QUẢN TRỊ TÀI NGUYÊN & ĐỒNG THỜI (R2 GPU Fallback & R3 Benchmark Plan)
 
 ### 5.1 Chiến lược Phân tầng Thiết bị Thực thi (DirectML trên DirectX 12 -> CPU)
 Môi trường triển khai trọng tâm của Project AIC là máy tính để bàn và laptop chạy Windows 10/11. Chiến lược phần cứng ưu tiên hàng đầu là:
@@ -838,7 +839,8 @@ class OnnxBackgroundRemovalProvider(BackgroundRemovalProvider):
         return
       except Exception as exc:
         logger.warning(
-            "DirectML gặp sự cố (%s: %s). Tự động hạ cấp an toàn về CPU.",
+            "DirectML gặp sự cố (%s: %s). Thử nghiệm hạ cấp sang CPU theo đề"
+            " xuất thiết kế.",
             type(exc).__name__,
             str(exc),
         )
@@ -1239,11 +1241,11 @@ Trong môi trường kiểm thử CI (GitHub Actions), cấu hình mặc định
 
 ---
 
-## 8. DANH MỤC TỆP DỰ KIẾN & LỘ TRÌNH TRIỂN KHAI CHO PHASE 0.5B
+## 8. DANH MỤC TỆP DỰ KIẾN, LỘ TRÌNH TRIỂN KHAI & XÁC MINH GIT REMOTE (R6 Git & Scope Restrictions)
 
-Khi Owner chính thức phê duyệt báo cáo khảo sát kiến trúc này, giai đoạn triển khai mã nguồn tiếp theo của Phase 0.5B sẽ tiến hành các thay đổi độc lập và an toàn như sau:
+Khi Owner chính thức xem xét và thông qua báo cáo khảo sát kiến trúc này, giai đoạn triển khai mã nguồn tiếp theo của Phase 0.5B sẽ tiến hành các thay đổi độc lập và an toàn như sau:
 
-### 8.1 Danh mục Tệp Dự kiến:
+### 8.1 Danh mục Tệp Dự kiến
 1. `backend/pyproject.toml` (Sửa đổi): Bổ sung phụ thuộc `onnxruntime-directml>=1.19.0` (cho Windows) hoặc `onnxruntime>=1.19.0` (cho Linux CI); bổ sung `onnx` vào nhóm `dev-dependencies` phục vụ fixture kiểm thử Tầng 2 (hoặc đóng gói sẵn tệp nhị phân fixture 2 KB).
 2. `backend/app/pipeline/config.py` (Sửa đổi): Bổ sung các thiết lập cấu hình đường dẫn `isnet_anime_model_path`, mã băm kỳ vọng, cờ kích hoạt GPU, và `use_mock_bg_provider`.
 3. `backend/app/pipeline/background/image_ops.py` (Tạo mới): Chứa các hàm toán học thuần túy xử lý letterbox, unpad, sigmoid và 4 cổng kiểm định mặt nạ alpha.
@@ -1251,17 +1253,18 @@ Khi Owner chính thức phê duyệt báo cáo khảo sát kiến trúc này, gi
 5. `backend/app/pipeline/background/factory.py` (Tạo mới): Chứa hàm nhà xưởng `create_background_provider(config)`.
 6. `backend/app/pipeline/security/model_verifier.py` (Tạo mới): Chứa hàm xác thực mã băm SHA-256 dạng luồng và cơ chế cách ly tệp hỏng.
 7. `backend/app/cli/pipeline.py` (Tạo mới): Lệnh CLI tải mô hình ngoài luồng an toàn.
-8. `backend/tests/pipeline/test_onnx_provider_cpu.py` (Tạo mới): Bộ kiểm thử Tầng 2 với fixture mô hình nhân tạo 2KB.
-9. `backend/tests/pipeline/test_onnx_provider_directml.py` (Tạo mới): Bộ kiểm thử Tầng 3 trên phần cứng DirectML.
+8. `backend/tests/pipeline/test_onnx_provider_cpu.py` (Tạo mới): Bộ kiểm thử Tầng 2 với fixture mô hình nhân tạo 2KB trên CPU.
+9. `backend/tests/pipeline/test_onnx_real_cpu.py` (Tạo mới): Bộ kiểm thử Tầng 3 với trọng số thực IS-Net trên CPU.
+10. `backend/tests/pipeline/test_onnx_provider_directml.py` (Tạo mới): Bộ kiểm thử Tầng 4 trên phần cứng DirectML GPU.
 
-### 8.2 Lộ trình Triển khai Đề xuất:
+### 8.2 Lộ trình Triển khai Đề xuất
 - **Bước 1:** Bổ sung cấu hình và hàm toán học xử lý hình ảnh (`image_ops.py`).
 - **Bước 2:** Xây dựng bộ xác thực mật mã SHA-256 và cô lập tệp hỏng (`model_verifier.py`).
 - **Bước 3:** Triển khai `OnnxBackgroundRemovalProvider` với cơ chế DirectML + CPU fallback và factory pattern.
 - **Bước 4:** Xây dựng bộ kiểm thử tích hợp Tầng 2 (CPU ONNX Synthetic 2KB), Tầng 3 (Real IS-Net CPU) và Tầng 4 (DirectML GPU).
 - **Bước 5:** Tích hợp truyền metadata mô hình vào `PipelineWorker`, chạy toàn bộ 218+ tests bảo đảm không có hồi quy và mở PR nghiệm thu.
 
-### 8.3 Xác minh Git Remote & Khẳng định Giới hạn Phạm vi (R5 Git Verification & Scope Guardrails)
+### 8.3 Xác minh Git Remote & Khẳng định Giới hạn Phạm vi (R6 Git & Scope Restrictions)
 
 Nhằm phục vụ công tác thanh tra, kiểm toán độc lập của Owner và hệ thống GitHub connector:
 
@@ -1286,6 +1289,9 @@ Nhằm phục vụ công tác thanh tra, kiểm toán độc lập của Owner v
 - **Commit kiểm toán đối kháng Reviewer R3:** `5c343418dee88169583d76bdded1792b8dc844d6`
 - **Đường dẫn Commit Reviewer R3 trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/5c343418dee88169583d76bdded1792b8dc844d6`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/5c343418dee88169583d76bdded1792b8dc844d6)
+- **Commit hiệu đính Implementer:** `1ffeb67bd6da24d2155169621d01d35050befdc3`
+- **Đường dẫn Commit Implementer trên GitHub:**  
+  [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/1ffeb67bd6da24d2155169621d01d35050befdc3`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/1ffeb67bd6da24d2155169621d01d35050befdc3)
 - **Đường dẫn tệp báo cáo trực tiếp trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/blob/docs/m0-task-05b-architecture-survey/docs/architecture/phase-05b-isnet-anime-survey.md`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/blob/docs/m0-task-05b-architecture-survey/docs/architecture/phase-05b-isnet-anime-survey.md)
 
@@ -1299,7 +1305,7 @@ git branch --show-current
 git rev-parse HEAD
 
 # 3. Kiểm tra thống kê thay đổi so với main
-git diff main...HEAD --stat
+git diff origin/main...HEAD --stat
 # Kết quả kỳ vọng: DUY NHẤT 1 tệp docs/architecture/phase-05b-isnet-anime-survey.md thay đổi
 ```
 
@@ -1309,7 +1315,7 @@ git diff main...HEAD --stat
 
 ---
 
-## 9. TÓM TẮT DỄ HIỂU DÀNH CHO SẾP (Plain Language Summary for Owner)
+## 9. TÓM TẮT DỄ HIỂU DÀNH CHO SẾP (R5 Plain Language Summary for Owner)
 
 *(Báo cáo tóm lược tuân thủ Quy định Thư ký Dự án tại `AGENTS.md`, bảo đảm tính trung thực kỹ thuật và phân định rõ ràng giữa thiết kế lý thuyết và kết quả thực tế)*
 
