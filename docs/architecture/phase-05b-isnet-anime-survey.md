@@ -7,12 +7,13 @@
 **Commit cơ sở:** `fb5b21f0fa59ddc4983d29f1500f5672d3b7205e` (Merge PR #5 — Pipeline Core Phase 0.5A)  
 **Commit khảo sát cơ sở trên remote:** `8b92a2b821a4844925640c184ca7570736053151` (Đã đẩy lên remote origin)  
 **Commit hiệu đính & kiểm chứng R1 trên remote:** `0f9160c99823ce025738c30c70ca81280020cc8e` (Đã đẩy lên remote origin)  
-**Commit kiểm toán đối kháng Reviewer R1 trên remote:** `f8590bd97b17678aac2c05699b179711a485c06b` (Đã đẩy lên remote origin)  
-**Commit kiểm toán đối kháng Reviewer R2 trên remote:** `7949c0afe55c7c504689fc2e44d00ccf829a709f` (Đã đẩy lên remote origin)  
-**Commit kiểm toán đối kháng Reviewer R3 trên remote:** `5c343418dee88169583d76bdded1792b8dc844d6` (Đã đẩy lên remote origin)  
+**Commit kiểm toán đối kháng Cycle 1 Reviewer R1 trên remote:** `f8590bd97b17678aac2c05699b179711a485c06b` (Đã đẩy lên remote origin)  
+**Commit kiểm toán đối kháng Cycle 1 Reviewer R2 trên remote:** `7949c0afe55c7c504689fc2e44d00ccf829a709f` (Đã đẩy lên remote origin)  
+**Commit kiểm toán đối kháng Cycle 1 Reviewer R3 trên remote:** `5c343418dee88169583d76bdded1792b8dc844d6` (Đã đẩy lên remote origin)  
 **Commit hiệu đính Implementer trên remote:** `1ffeb67bd6da24d2155169621d01d35050befdc3` (Đã đẩy lên remote origin)  
-**Tác giả:** worker_05b_2 (Implementer) & reviewer_05b_r1 (Adversarial Reviewer)  
-**Ngày lập & Cập nhật:** 07/11/2026 (Hiệu đính Đối kháng Hoàn thiện R1–R6)  
+**Commit kiểm toán đối kháng Reviewer R1 trên remote:** `8700382693f447d296258e021b8a989f59a22fc6` (Đã đẩy lên remote origin)  
+**Tác giả:** worker_05b_2 (Implementer), reviewer_05b_r1 (Reviewer R1) & reviewer_05b_r2 (Reviewer R2)  
+**Ngày lập & Cập nhật:** 07/11/2026 (Hiệu đính Đối kháng Hoàn thiện R1–R6 — Round 2)  
 **Chế độ tuân thủ:** Integrity Mode Development — Cam kết trung thực tuyệt đối, không gian lận, không giả lập kết quả.
 
 ---
@@ -96,7 +97,7 @@ Mục tiêu kỹ thuật cốt lõi của **Phase 0.5B** là nâng cấp hệ th
 │    │ ONNXBackgroundRemovalProvider (IS-Net Anime - 176 MB)             │    │
 │    │ - Lazy Loading + Singleton Session (asyncio.Lock bảo vệ)          │    │
 │    │ - Tiền xử lý: Letterbox đối xứng -> Canvas 1024x1024              │    │
-│    │ - Hardware Fallback: DirectML (DirectX 12) ──(lỗi)──► CPU (OpenMP)│    │
+│    │ - Hardware Fallback (Đề xuất): DirectML ──(lỗi)──► CPU (OpenMP)   │    │
 │    │ - Hậu xử lý: Sigmoid -> Cắt biên -> Unpad về (W, H) gốc           │    │
 │    │ - Soft Alpha Ramp: [0.05, 0.95] làm mịn viền tóc và vải mỏng      │    │
 │    │ - Cổng kiểm chuẩn mặt nạ: Chặn mặt nạ rỗng / đen / trắng hoàn toàn│    │
@@ -436,12 +437,12 @@ Một lỗi kiến trúc rất phổ biến ở các thư viện mã nguồn m�
 └─────────────────────────────────┴─────────────────────────────────┘
 ```
 
-1. **Sợi tóc mai mảnh & Tóc nhọn (Ahoge & Fine Hair Strands):** Chiều rộng chỉ từ 1 đến 3 pixel vươn ra ngoài nền. Các mô hình thông thường downsample sẽ làm gãy rụng các sợi tóc này. IS-Net giải quyết nhờ độ phân giải đầu vào cao $1024 \times 1024$ bảo tồn đặc trưng không gian tần số cao.
-2. **Vòng hào quang tóc ("Angel Rings" Highlights):** Dải sáng trắng hoặc pastel bóng loáng trên đỉnh đầu Miku. Khi nền ảnh gốc là màu trắng sáng, các mạng phân vùng cổ điển thường nhận nhầm dải sáng này là nền xuyên thấu, tạo ra các lỗ thủng kỳ dị trên đầu nhân vật. Tầm nhìn ngữ cảnh toàn cục của IS-Net phân biệt rõ đây là cấu trúc bên trong khối tóc.
-3. **Phụ kiện nơ bay và trang sức nổi:** Nơ tai nghe Miku, ruy-băng lơ lửng có diện tích nhỏ dễ bị các bộ lọc hình thái học (morphological filter) xóa bỏ do coi là nhiễu. Ngưỡng giữ lại alpha mềm ở mức thấp ($T_{\text{low}} \le 0.05$) giúp bảo tồn trọn vẹn chi tiết phụ kiện.
-4. **Vùng bán trong suốt (Semi-transparent Veils & Glasses):** Mắt kính, tất ren mỏng, cánh cơ khí mờ ảo. Việc sử dụng mặt nạ nhị phân cứng (chỉ có 0 hoặc 255) sẽ biến vải voan mỏng thành một tấm bìa cứng đục ngầu hoặc xóa mất tròng kính. Việc duy trì kênh alpha mềm liên tục $\alpha \in [0.0, 1.0]$ là điều kiện tiên quyết.
-5. **Nét viền mực đen (Line Art Inking):** Nét mực dày 1-2 pixel bao quanh nhân vật. Nếu mặt nạ co vào 1 pixel sẽ làm mất nét mực (nhân vật trông xơ xác, sắc nhọn); nếu nở ra 1 pixel sẽ dính viền màu của phông nền cũ (halo artifact). Cần thuật toán ánh xạ tọa độ unpadding chuẩn xác từng pixel.
-6. **Khe hở trang phục phức tạp (Costume Cavities):** Khoảng hở giữa cánh tay chống nạnh, kẽ giữa hai lọn tóc twintail và thân người, nếp gấp váy xếp ly. Khả năng kết hợp đa tầng đặc trưng của IS-Net giúp bóc sạch nền bên trong các hốc rỗng mà không làm thủng quần áo.
+1. **Sợi tóc mai mảnh & Tóc nhọn (Ahoge & Fine Hair Strands):** Chiều rộng chỉ từ 1 đến 3 pixel vươn ra ngoài nền. Các mô hình thông thường downsample dễ làm gãy rụng các sợi tóc này. IS-Net được thiết kế nhằm khắc phục nhược điểm này nhờ độ phân giải đầu vào cao $1024 \times 1024$ bảo tồn đặc trưng không gian tần số cao hơn (hiệu quả thực tế sẽ được kiểm chứng bằng benchmark ở Phase 0.5B).
+2. **Vòng hào quang tóc ("Angel Rings" Highlights):** Dải sáng trắng hoặc pastel bóng loáng trên đỉnh đầu Miku. Khi nền ảnh gốc là màu trắng sáng, các mạng phân vùng cổ điển thường nhận nhầm dải sáng này là nền xuyên thấu, tạo ra các lỗ thủng kỳ dị trên đầu nhân vật. Tầm nhìn ngữ cảnh toàn cục của IS-Net được thiết kế nhằm phân biệt đây là cấu trúc bên trong khối tóc thay vì phông nền.
+3. **Phụ kiện nơ bay và trang sức nổi:** Nơ tai nghe Miku, ruy-băng lơ lửng có diện tích nhỏ dễ bị các bộ lọc hình thái học (morphological filter) xóa bỏ do coi là nhiễu. Thiết kế ngưỡng giữ lại alpha mềm ở mức thấp ($T_{\text{low}} \le 0.05$) nhằm tối ưu khả năng bảo tồn chi tiết phụ kiện mảnh.
+4. **Vùng bán trong suốt (Semi-transparent Veils & Glasses):** Mắt kính, tất ren mỏng, cánh cơ khí mờ ảo. Việc sử dụng mặt nạ nhị phân cứng (chỉ có 0 hoặc 255) sẽ biến vải voan mỏng thành một tấm bìa cứng đục ngầu hoặc xóa mất tròng kính. Việc duy trì kênh alpha mềm liên tục $\alpha \in [0.0, 1.0]$ là điều kiện tiên quyết trong thiết kế hậu xử lý.
+5. **Nét viền mực đen (Line Art Inking):** Nét mực dày 1-2 pixel bao quanh nhân vật. Nếu mặt nạ co vào 1 pixel sẽ làm mất nét mực (nhân vật trông xơ xác, sắc nhọn); nếu nở ra 1 pixel sẽ dính viền màu của phông nền cũ (halo artifact). Cần thuật toán ánh xạ tọa độ unpadding chuẩn xác từng pixel để bảo toàn nét vẽ.
+6. **Khe hở trang phục phức tạp (Costume Cavities):** Khoảng hở giữa cánh tay chống nạnh, kẽ giữa hai lọn tóc twintail và thân người, nếp gấp váy xếp ly. Khả năng kết hợp đa tầng đặc trưng của IS-Net được kỳ vọng hỗ trợ bóc tách nền bên trong các hốc rỗng mà không làm thủng trang phục (chất lượng thực tế cần kiểm chứng qua tập kiểm chuẩn).
 
 ### 4.2 Thiết kế Tiền xử lý: Phép thử Bảo toàn Hình học (Geometry Preservation Test) vs. Chất lượng Phân vùng AI
 
@@ -519,7 +520,7 @@ Sau khi mô hình ONNX xuất ra tensor mặt nạ thô `(1, 1, 1024, 1024)`:
    $$\text{prob}(x, y) = \frac{1}{1 + e^{-\text{clip}(z(x, y), -20.0, 20.0)}}$$
 2. **Cắt bỏ Phần Đệm Lề (Crop Padding):** Cắt chính xác vùng ma trận ảnh thực tế:
    $$\text{cropped\_prob} = \text{prob}[\Delta y : \Delta y + H_{\text{new}}, \; \Delta x : \Delta x + W_{\text{new}}]$$
-3. **Thu phóng Trở lại Tọa độ Gốc (Bilinear Unpadding):** Phóng to `cropped_prob` trở lại kích thước ban đầu $(W_{\text{orig}}, H_{\text{orig}})$ bằng phép nội suy song tuyến tính (`Image.Resampling.BILINEAR`). Thao tác này bảo đảm 100% tọa độ nhân vật khớp hoàn hảo với ảnh gốc.
+3. **Thu phóng Trở lại Tọa độ Gốc (Bilinear Unpadding):** Phóng to `cropped_prob` trở lại kích thước ban đầu $(W_{\text{orig}}, H_{\text{orig}})$ bằng phép nội suy song tuyến tính (`Image.Resampling.BILINEAR`). Thao tác này khôi phục lưới tọa độ mặt nạ về đúng độ phân giải gốc của ảnh ban đầu (kết hợp với đệm đối xứng đạt sai số hình học sub-pixel $\le 0.081\text{ px}$; phân định rõ đây là bảo toàn hình học, không phải chứng minh chất lượng phân vùng AI).
 4. **Hàm Chuyển đổi Dải Alpha Mềm (Continuous Soft Alpha Ramp):**
    Thay vì cắt ngưỡng nhị phân cứng ở 0.5 gây răng cưa, áp dụng hàm chuyển tiếp làm mịn:
    $$A(x, y) = \begin{cases} 
@@ -569,7 +570,7 @@ def postprocess_mask(
 ```
 
 ### 4.4 Bộ lọc Tinh chỉnh Cạnh Biên Tùy chọn (Guided Filter)
-Bộ lọc Guided Image Filter có thể dùng ảnh RGB gốc làm ảnh dẫn đường (guide image) để định hình lại kênh alpha mờ. Thuật toán giả định mối quan hệ tuyến tính giữa cường độ màu của ảnh gốc và độ đục alpha trong cửa sổ lân cận hẹp $\omega_k$: $\alpha_i = a_k I_i + b_k$. Kết quả mang lại độ sắc nét hoàn hảo cho các sợi tóc mảnh, tuy nhiên có chi phí tính toán khoảng 15–40 ms trên CPU. Bộ lọc này được đề xuất dưới dạng tùy chọn cấu hình (`enable_guided_filter=False` mặc định).
+Bộ lọc Guided Image Filter có thể dùng ảnh RGB gốc làm ảnh dẫn đường (guide image) để định hình lại kênh alpha mờ. Thuật toán giả định mối quan hệ tuyến tính giữa cường độ màu của ảnh gốc và độ đục alpha trong cửa sổ lân cận hẹp $\omega_k$: $\alpha_i = a_k I_i + b_k$. Theo lý thuyết xử lý ảnh, bộ lọc có tiềm năng cải thiện độ sắc nét dải biên cho các sợi tóc mảnh, tuy nhiên có chi phí tính toán khoảng 15–40 ms trên CPU. Bộ lọc này được đề xuất dưới dạng tùy chọn cấu hình (`enable_guided_filter=False` mặc định).
 
 ### 4.5 Khởi tạo Luồng Byte RGBA Đích Thực (4 Kênh Chuẩn PNG)
 Gán kênh Alpha mềm đã chuẩn hóa $(A)$ trực tiếp vào ảnh RGB gốc bằng phương thức tối ưu `putalpha()` của Pillow (tự động xử lý an toàn mọi định dạng màu ban đầu như RGB, RGBA, Palette hay Grayscale mà không gây lỗi unpack kênh):
@@ -582,7 +583,7 @@ buffer = io.BytesIO()
 rgba_image.save(buffer, format="PNG", optimize=True)
 transparent_png_bytes = buffer.getvalue()
 ```
-Đầu ra này tương thích hoàn toàn với giai đoạn tiếp theo của Pipeline: `SpriteNormalizer` sẽ trích xuất `img.getchannel("A").getbbox()`, tính toán tỷ lệ co dãn thích hợp và đặt nhân vật lên canvas chuẩn $1024 \times 1536$ mà không gặp bất kỳ lỗi lệch tọa độ nào.
+Đầu ra này tương thích với giai đoạn tiếp theo của Pipeline: `SpriteNormalizer` sẽ trích xuất `img.getchannel("A").getbbox()`, tính toán tỷ lệ co dãn thích hợp và đặt nhân vật lên canvas chuẩn $1024 \times 1536$ theo đúng hợp đồng dữ liệu hiện hữu.
 
 ### 4.6 4 Cổng Kiểm chuẩn Đầu ra: Cơ sở Lý thuyết, Điều kiện Loại bỏ Nhầm & Phương pháp Hiệu chuẩn
 
@@ -683,7 +684,7 @@ Nhằm đánh giá năng lực bóc tách thực tế của mô hình IS-Net Ani
 #### 1. Ma trận 6 Nhóm Ca Kiểm Thử Biên Chuyên Sâu:
 1. **Tóc mai mảnh và lọn tóc dài (Fine Hair & Long Hair):** Ahoge đỉnh đầu rộng 1–3 pixel, lọn tóc twintail xòe rộng bay trong gió, các sợi tóc mai bay lơ thơ ngoài phông nền.
 2. **Nơ và phụ kiện nhỏ (Ribbons & Small Accessories):** Nơ kẹp tai nghe Miku, dây ruy-băng trang phục bay lơ lửng, kẹp tóc số hiệu "01", trang sức cổ tay diện tích nhỏ.
-3. **Nét vẽ viền mực và đường bao nhân vật (Line Art & Character Contours):** Nét mực viền đen dày 1–2 pixel bao quanh cơ thể; yêu cầu bám sát đường tim viền vẽ, không làm mỏng nét mực và loại trừ hoàn toàn vệt màu nền cũ (halo artifacts).
+3. **Nét vẽ viền mực và đường bao nhân vật (Line Art & Character Contours):** Nét mực viền đen dày 1–2 pixel bao quanh cơ thể; yêu cầu bám sát đường tim viền vẽ, không làm mỏng nét mực và giảm thiểu tối đa vệt màu nền cũ (halo artifacts).
 4. **Vùng bán trong suốt (Semi-transparent Regions):** Khăn voan mỏng, tất ren xuyên thấu, tròng kính cận, cánh cơ khí mờ ảo có dải alpha chuyển tiếp thực tế.
 5. **Trang phục phức tạp & Hốc rỗng (Complex Costumes & Cavities):** Váy nhiều tầng xếp ly, diềm đăng-ten ren, khoảng trống xuyên thấu giữa cánh tay chống nạnh và thân người.
 6. **Phông nền đơn giản vs. Phông nền phức tạp (Simple vs. Complex Backgrounds):** So sánh hiệu năng bóc tách giữa nền trắng/đơn sắc với cảnh nền ngoại cảnh anime dày đặc chi tiết (đường phố thành phố tương lai, hoa anh đào rực rỡ, lớp học có màu sắc trùng màu tóc xanh ngọc của Miku).
@@ -978,17 +979,17 @@ Nhằm cung cấp bằng chứng thực nghiệm chính xác, một kịch bản
 2. **Kiểm soát Đồng thời (Concurrency Governor):** Cấu hình `worker_concurrency = 1` bảo đảm xử lý tuần tự từng ảnh trong nền. Khóa bất đồng bộ `asyncio.Lock` trong provider ngăn chặn triệt để tình trạng hai coroutine cùng khởi tạo phiên đồng thời hoặc gửi lệnh song song vào DirectML gây xung đột tài nguyên đồ họa.
 3. **Thực thi Bất đồng bộ Không Chặn Event Loop (Non-blocking Thread Offloading):** Hàm C++ `session.run()` của ONNX Runtime là tác vụ tính toán nặng (compute-bound) đồng bộ và chặn luồng (blocking). Để bảo đảm server FastAPI không bị đóng băng (không làm nghẽn các endpoint kiểm tra sức khỏe `/healthz` hay các tiến trình HTTP khác), phương thức bất đồng bộ `remove_background()` bắt buộc phải ủy thác hàm suy luận đồng bộ sang luồng riêng qua `await asyncio.to_thread(self._run_inference_sync, ...)`.
 4. **Giải phóng Tài nguyên Phiên (`release()`):**
-   ```python
-   def release(self) -> None:
-     if self._session is not None:
-       del self._session
-       self._session = None
-       self._active_provider = "released"
-       gc.collect()
-       logger.info(
-           "Đã giải phóng tham chiếu phiên ONNX Runtime và yêu cầu thu dọn bộ"
-           " nhớ."
-       )
+```python
+def release(self) -> None:
+  if self._session is not None:
+    del self._session
+    self._session = None
+    self._active_provider = "released"
+    gc.collect()
+    logger.info(
+        "Đã giải phóng tham chiếu phiên ONNX Runtime và yêu cầu thu dọn bộ"
+        " nhớ."
+    )
 ```
    *Lưu ý kỹ thuật về giải phóng bộ nhớ:* Thao tác `release()` hủy bỏ đối tượng session ONNX Runtime và gọi `gc.collect()` ở tầng Python. Tuy nhiên, theo đặc tả quản trị bộ nhớ của DirectX 12 và trình điều khiển WDDM, **VRAM đồ họa không được giải phóng về đúng 0 MB ngay lập tức** do driver duy trì bộ nhớ đệm (cached heap) để tái sử dụng. Ứng dụng không đưa ra cam kết giải phóng VRAM về 0 MB.
 
@@ -1155,39 +1156,39 @@ Trong môi trường kiểm thử CI (GitHub Actions), cấu hình mặc định
 ### 6.2 Tầng 2: Kiểm thử Tích hợp CPU ONNX với Mô hình Nhân tạo 2KB (Trạng thái: CHƯA CHẠY - NOT RUN)
 - **Tệp kiểm thử kế hoạch:** `backend/tests/pipeline/test_onnx_provider_cpu.py`.
 - **Sáng kiến Kỹ thuật Tách biệt:** Tạo một fixture sinh ra **mô hình ONNX nhân tạo hợp lệ nặng chỉ ~2 KB** ngay trong bộ nhớ tạm:
-  ```python
-  @pytest.fixture(scope="session")
-  def synthetic_isnet_onnx(tmp_path_factory) -> Path:
-    """Tạo mô hình ONNX siêu nhỏ (2KB) khớp đúng hợp đồng [1,3,1024,1024] -> [1,1,1024,1024]."""
-    import onnx
-    from onnx import TensorProto, helper
+```python
+@pytest.fixture(scope="session")
+def synthetic_isnet_onnx(tmp_path_factory) -> Path:
+  """Tạo mô hình ONNX siêu nhỏ (2KB) khớp đúng hợp đồng [1,3,1024,1024] -> [1,1,1024,1024]."""
+  import onnx
+  from onnx import TensorProto, helper
 
-    model_path = tmp_path_factory.mktemp("models") / "synthetic_isnet.onnx"
-    X = helper.make_tensor_value_info(
-        "img", TensorProto.FLOAT, [1, 3, 1024, 1024]
-    )
-    Y = helper.make_tensor_value_info(
-        "mask", TensorProto.FLOAT, [1, 1, 1024, 1024]
-    )
+  model_path = tmp_path_factory.mktemp("models") / "synthetic_isnet.onnx"
+  X = helper.make_tensor_value_info(
+      "img", TensorProto.FLOAT, [1, 3, 1024, 1024]
+  )
+  Y = helper.make_tensor_value_info(
+      "mask", TensorProto.FLOAT, [1, 1, 1024, 1024]
+  )
 
-    # Lớp tích chập 1x1 tính giá trị trung bình 3 kênh màu mô phỏng xác suất nền
-    w = helper.make_tensor(
-        "w", TensorProto.FLOAT, [1, 3, 1, 1], [0.333, 0.333, 0.333]
-    )
-    conv = helper.make_node(
-        "Conv", inputs=["img", "w"], outputs=["conv_out"]
-    )
-    sig = helper.make_node(
-        "Sigmoid", inputs=["conv_out"], outputs=["mask"]
-    )
+  # Lớp tích chập 1x1 tính giá trị trung bình 3 kênh màu mô phỏng xác suất nền
+  w = helper.make_tensor(
+      "w", TensorProto.FLOAT, [1, 3, 1, 1], [0.333, 0.333, 0.333]
+  )
+  conv = helper.make_node(
+      "Conv", inputs=["img", "w"], outputs=["conv_out"]
+  )
+  sig = helper.make_node(
+      "Sigmoid", inputs=["conv_out"], outputs=["mask"]
+  )
 
-    graph = helper.make_graph(
-        [conv, sig], "synthetic_isnet", [X], [Y], [w]
-    )
-    model = helper.make_model(graph, producer_name="aic-synthetic")
-    onnx.save(model, str(model_path))
-    return model_path
-  ```
+  graph = helper.make_graph(
+      [conv, sig], "synthetic_isnet", [X], [Y], [w]
+  )
+  model = helper.make_model(graph, producer_name="aic-synthetic")
+  onnx.save(model, str(model_path))
+  return model_path
+```
 
 *Lưu ý về phụ thuộc kiểm thử:* Fixture sinh mô hình nhân tạo sử dụng thư viện `onnx` (trình biên dịch protobuf đồ thị ONNX). Do đó, giai đoạn 0.5B cần khai báo `onnx` trong nhóm phụ thuộc kiểm thử (`dev-dependencies`) trong `backend/pyproject.toml`, HOẶC lưu trữ sẵn tệp nhị phân fixture siêu nhẹ ~2 KB này tại `backend/tests/fixtures/synthetic_isnet.onnx` để bộ kiểm thử Tầng 2 trên CI có thể chạy thuần túy với gói `onnxruntime` mà không cần cài thêm `onnx`.
 
@@ -1207,19 +1208,19 @@ Trong môi trường kiểm thử CI (GitHub Actions), cấu hình mặc định
 ### 6.4 Tầng 4: Kiểm thử Phần cứng DirectML GPU trên Windows (Trạng thái: CHƯA CHẠY - NOT RUN)
 - **Tệp kiểm thử kế hoạch:** `backend/tests/pipeline/test_onnx_provider_directml.py`.
 - **Cơ chế Gated Hardware:** Tự động bỏ qua nếu không phát hiện runtime DirectML trên máy tính:
-  ```python
-  import onnxruntime as ort
-  import pytest
+```python
+import onnxruntime as ort
+import pytest
 
-  has_directml = (
-      hasattr(ort, "get_available_providers")
-      and "DmlExecutionProvider" in ort.get_available_providers()
-  )
-  pytestmark = pytest.mark.skipif(
-      not has_directml,
-      reason="Bỏ qua vì hệ thống không có phần cứng đồ họa DirectML",
-  )
-  ```
+has_directml = (
+    hasattr(ort, "get_available_providers")
+    and "DmlExecutionProvider" in ort.get_available_providers()
+)
+pytestmark = pytest.mark.skipif(
+    not has_directml,
+    reason="Bỏ qua vì hệ thống không có phần cứng đồ họa DirectML",
+)
+```
 - **Phạm vi kiểm chứng:**
   1. Khởi tạo phiên DirectML thực tế trên Windows với `enable_mem_pattern=False`.
   2. Đo thời gian biên dịch shader DirectML trong bước suy luận khởi động (warm-up inference).
@@ -1243,7 +1244,7 @@ Trong môi trường kiểm thử CI (GitHub Actions), cấu hình mặc định
 
 ## 8. DANH MỤC TỆP DỰ KIẾN, LỘ TRÌNH TRIỂN KHAI & XÁC MINH GIT REMOTE (R6 Git & Scope Restrictions)
 
-Khi Owner chính thức xem xét và thông qua báo cáo khảo sát kiến trúc này, giai đoạn triển khai mã nguồn tiếp theo của Phase 0.5B sẽ tiến hành các thay đổi độc lập và an toàn như sau:
+Khi Owner chính thức hoàn tất xem xét và đưa ra quyết định đối với báo cáo khảo sát kiến trúc này, giai đoạn triển khai mã nguồn tiếp theo của Phase 0.5B sẽ tiến hành các thay đổi độc lập và an toàn như sau:
 
 ### 8.1 Danh mục Tệp Dự kiến
 1. `backend/pyproject.toml` (Sửa đổi): Bổ sung phụ thuộc `onnxruntime-directml>=1.19.0` (cho Windows) hoặc `onnxruntime>=1.19.0` (cho Linux CI); bổ sung `onnx` vào nhóm `dev-dependencies` phục vụ fixture kiểm thử Tầng 2 (hoặc đóng gói sẵn tệp nhị phân fixture 2 KB).
@@ -1280,18 +1281,21 @@ Nhằm phục vụ công tác thanh tra, kiểm toán độc lập của Owner v
 - **Commit hiệu đính & kiểm chứng thực nghiệm R1:** `0f9160c99823ce025738c30c70ca81280020cc8e`
 - **Đường dẫn Commit hiệu đính R1 trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/0f9160c99823ce025738c30c70ca81280020cc8e`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/0f9160c99823ce025738c30c70ca81280020cc8e)
-- **Commit kiểm toán đối kháng Reviewer R1:** `f8590bd97b17678aac2c05699b179711a485c06b`
-- **Đường dẫn Commit Reviewer R1 trên GitHub:**  
+- **Commit kiểm toán đối kháng Cycle 1 Reviewer R1:** `f8590bd97b17678aac2c05699b179711a485c06b`
+- **Đường dẫn Commit Cycle 1 Reviewer R1 trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/f8590bd97b17678aac2c05699b179711a485c06b`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/f8590bd97b17678aac2c05699b179711a485c06b)
-- **Commit kiểm toán đối kháng Reviewer R2:** `7949c0afe55c7c504689fc2e44d00ccf829a709f`
-- **Đường dẫn Commit Reviewer R2 trên GitHub:**  
+- **Commit kiểm toán đối kháng Cycle 1 Reviewer R2:** `7949c0afe55c7c504689fc2e44d00ccf829a709f`
+- **Đường dẫn Commit Cycle 1 Reviewer R2 trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/7949c0afe55c7c504689fc2e44d00ccf829a709f`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/7949c0afe55c7c504689fc2e44d00ccf829a709f)
-- **Commit kiểm toán đối kháng Reviewer R3:** `5c343418dee88169583d76bdded1792b8dc844d6`
-- **Đường dẫn Commit Reviewer R3 trên GitHub:**  
+- **Commit kiểm toán đối kháng Cycle 1 Reviewer R3:** `5c343418dee88169583d76bdded1792b8dc844d6`
+- **Đường dẫn Commit Cycle 1 Reviewer R3 trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/5c343418dee88169583d76bdded1792b8dc844d6`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/5c343418dee88169583d76bdded1792b8dc844d6)
 - **Commit hiệu đính Implementer:** `1ffeb67bd6da24d2155169621d01d35050befdc3`
 - **Đường dẫn Commit Implementer trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/1ffeb67bd6da24d2155169621d01d35050befdc3`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/1ffeb67bd6da24d2155169621d01d35050befdc3)
+- **Commit kiểm toán đối kháng Reviewer R1:** `8700382693f447d296258e021b8a989f59a22fc6`
+- **Đường dẫn Commit Reviewer R1 trên GitHub:**  
+  [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/8700382693f447d296258e021b8a989f59a22fc6`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/8700382693f447d296258e021b8a989f59a22fc6)
 - **Đường dẫn tệp báo cáo trực tiếp trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/blob/docs/m0-task-05b-architecture-survey/docs/architecture/phase-05b-isnet-anime-survey.md`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/blob/docs/m0-task-05b-architecture-survey/docs/architecture/phase-05b-isnet-anime-survey.md)
 
