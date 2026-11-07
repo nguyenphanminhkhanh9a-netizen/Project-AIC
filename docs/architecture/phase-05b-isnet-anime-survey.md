@@ -7,6 +7,7 @@
 **Commit cơ sở:** `fb5b21f0fa59ddc4983d29f1500f5672d3b7205e` (Merge PR #5 — Pipeline Core Phase 0.5A)  
 **Commit khảo sát cơ sở trên remote:** `8b92a2b821a4844925640c184ca7570736053151` (Đã đẩy lên remote origin)  
 **Commit hiệu đính & kiểm chứng R1 trên remote:** `0f9160c99823ce025738c30c70ca81280020cc8e` (Đã đẩy lên remote origin)  
+**Commit kiểm toán đối kháng Reviewer R1 trên remote:** `f8590bd97b17678aac2c05699b179711a485c06b` (Đã đẩy lên remote origin)  
 **Tác giả:** worker_05b_1 (Teamwork Subagent — Proposal Report Author)  
 **Ngày lập & Cập nhật:** 07/11/2026 (Hiệu đính & Kiểm chứng Thực nghiệm R1–R5)  
 **Chế độ tuân thủ:** Integrity Mode Development — Cam kết trung thực tuyệt đối, không gian lận, không giả lập kết quả.
@@ -496,9 +497,10 @@ Nhà cung cấp dịch vụ tách nền thực thi 4 bước kiểm định tự
 def validate_alpha_matte(
     alpha: Image.Image,
     allow_translucent: bool = False,
+    allow_full_bleed: bool = False,
     min_coverage: float = 0.05,
     max_coverage: float = 0.98,
-    min_dimension: int = 64,
+    min_dimension: int | None = None,
 ) -> tuple[bool, str | None, list[str]]:
   """Kiểm định 4 cổng chất lượng mặt nạ alpha với các cờ hiệu chuẩn linh hoạt."""
   warnings: list[str] = []
@@ -516,39 +518,46 @@ def validate_alpha_matte(
         f" (max_alpha={max_a} < {required_max_alpha}).",
         warnings,
     )
-  if min_a > 5:
+  required_min_alpha = 255 if allow_full_bleed else 5
+  if min_a > required_min_alpha:
     return (
         False,
         "Mặt nạ đục hoàn toàn: không tách được phông nền trong suốt"
-        f" (min_alpha={min_a} > 5).",
+        f" (min_alpha={min_a} > {required_min_alpha}).",
         warnings,
     )
 
-  # Cổng 2: Kiểm tra kích thước hộp bao (Bounding Box)
+  # Cổng 2: Kiểm tra kích thước hộp bao (Bounding Box thích ứng)
   bbox = alpha.getbbox()
   if bbox is None:
     return False, "Không phát hiện vùng nhân vật trong kênh Alpha.", warnings
   bw, bh = bbox[2] - bbox[0], bbox[3] - bbox[1]
-  if bw < min_dimension or bh < min_dimension:
+  effective_min_dim = (
+      min_dimension
+      if min_dimension is not None
+      else max(32, int(0.08 * min(alpha.size)))
+  )
+  if bw < effective_min_dim or bh < effective_min_dim:
     return (
         False,
-        f"Hộp bao quá nhỏ ({bw}x{bh} < {min_dimension}x{min_dimension}): nghi ngờ đốm nhiễu.",
+        f"Hộp bao quá nhỏ ({bw}x{bh} < {effective_min_dim}x{effective_min_dim}): nghi ngờ đốm nhiễu.",
         warnings,
     )
 
   # Cổng 3: Tỷ lệ bao phủ diện tích nhân vật (Silhouette Coverage Ratio)
   arr = np.array(alpha, dtype=np.uint8)
   coverage = float(np.count_nonzero(arr > 12) / arr.size)
+  effective_max_cov = 1.0 if allow_full_bleed else max_coverage
   if coverage < min_coverage:
     return (
         False,
         f"Độ phủ nhân vật ({coverage:.3%}) quá thấp dưới mức cho phép ({min_coverage:.1%}).",
         warnings,
     )
-  if coverage > max_coverage:
+  if coverage > effective_max_cov:
     return (
         False,
-        f"Độ phủ nhân vật ({coverage:.3%}) vượt quá {max_coverage:.1%}, phông nền chưa được xóa sạch.",
+        f"Độ phủ nhân vật ({coverage:.3%}) vượt quá {effective_max_cov:.1%}, phông nền chưa được xóa sạch.",
         warnings,
     )
 
@@ -656,9 +665,26 @@ class OnnxBackgroundRemovalProvider(BackgroundRemovalProvider):
   def execution_provider(self) -> str:
     return self._active_provider
 
+  def _ensure_session_loaded(self) -> None:
+    """Nạp phiên nếu chưa được khởi tạo hoặc sau khi đã giải phóng."""
+    if self._session is None:
+      self._init_session_sync()
+
   def _init_session_sync(self) -> None:
     """Khởi tạo phiên đồng bộ với cơ chế dự phòng an toàn tuyệt đối."""
-    model_path = str(self.config.isnet_anime_model_path)
+    model_file = Path(self.config.isnet_anime_model_path)
+
+    # BẢO ĐẢM BẤT BIẾN PRE-LOAD: Xác minh mã băm SHA-256 dạng luồng trước khi nạp
+    if getattr(self.config, "verify_model_hash", True):
+      if not verify_model_sha256(
+          model_file, self.config.isnet_anime_expected_sha256
+      ):
+        raise ModelIntegrityError(
+            f"Mã băm của tệp {model_file} không khớp giá trị kỳ vọng "
+            f"({self.config.isnet_anime_expected_sha256}). Từ chối nạp mô hình."
+        )
+
+    model_path = str(model_file)
     available = ort.get_available_providers()
 
     # TẦNG 1: Thử nghiệm DirectML
@@ -720,6 +746,61 @@ class OnnxBackgroundRemovalProvider(BackgroundRemovalProvider):
         "Khởi tạo thành công IS-Net Anime trên CPU (Threads: %d)",
         self.config.cpu_threads,
     )
+
+  def _run_inference_sync(
+      self, image_bytes: bytes, **kwargs: Any
+  ) -> tuple[bytes, dict[str, Any]]:
+    """Thực thi toàn bộ chuỗi tiền xử lý, suy luận ONNX và hậu xử lý trên worker thread."""
+    t0 = time.perf_counter()
+    if self._session is None:
+      raise RuntimeError("ONNX Session chưa được khởi tạo.")
+
+    # 1. Đọc ảnh gốc qua Pillow
+    orig_img = Image.open(io.BytesIO(image_bytes))
+    w_orig, h_orig = orig_img.size
+
+    # 2. Tiền xử lý đệm khung đối xứng letterbox -> [1, 3, 1024, 1024]
+    input_tensor, pad_meta = preprocess_letterbox(orig_img)
+    in_name = self._session.get_inputs()[0].name
+
+    # 3. Chạy suy luận ONNX Runtime C++ (chặn luồng worker)
+    out_tensors = self._session.run(None, {in_name: input_tensor})
+    raw_mask = out_tensors[0]  # shape: [1, 1, 1024, 1024]
+
+    # 4. Hậu xử lý unpad, sigmoid và tạo dải alpha mềm
+    alpha_img = postprocess_mask(raw_mask, pad_meta, (w_orig, h_orig))
+
+    # 5. Kiểm chuẩn 4 cổng chất lượng mặt nạ alpha
+    valid, err_msg, warnings = validate_alpha_matte(
+        alpha_img,
+        allow_translucent=kwargs.get("allow_translucent", False),
+        allow_full_bleed=kwargs.get("allow_full_bleed", False),
+    )
+    if not valid:
+      raise ValueError(f"Kiểm chuẩn mặt nạ alpha thất bại: {err_msg}")
+
+    # 6. Ghép RGBA an toàn qua putalpha
+    rgb_img = orig_img.convert("RGB")
+    rgba_img = rgb_img.copy()
+    rgba_img.putalpha(alpha_img)
+
+    buf = io.BytesIO()
+    rgba_img.save(buf, format="PNG", optimize=True)
+    out_png_bytes = buf.getvalue()
+
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+    meta = {
+        "model_name": self.model_name,
+        "execution_provider": self.execution_provider,
+        "device_id": self.config.gpu_device_id if self._active_provider == "directml" else None,
+        "fallback_occurred": self._fallback_occurred,
+        "latency_ms": round(latency_ms, 2),
+        "input_shape": [1, 3, 1024, 1024],
+        "output_shape": list(raw_mask.shape),
+        "alpha_extrema": list(alpha_img.getextrema() or (0, 0)),
+        "warnings": warnings,
+    }
+    return out_png_bytes, meta
 ```
 
 ### 5.4 Ghi log Thiết bị Hoạt động và Metadata Chẩn đoán
@@ -1047,6 +1128,9 @@ Nhằm phục vụ công tác thanh tra, kiểm toán độc lập của Owner v
 - **Commit hiệu đính & kiểm chứng thực nghiệm R1:** `0f9160c99823ce025738c30c70ca81280020cc8e`
 - **Đường dẫn Commit hiệu đính R1 trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/0f9160c99823ce025738c30c70ca81280020cc8e`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/0f9160c99823ce025738c30c70ca81280020cc8e)
+- **Commit kiểm toán đối kháng Reviewer R1:** `f8590bd97b17678aac2c05699b179711a485c06b`
+- **Đường dẫn Commit Reviewer R1 trên GitHub:**  
+  [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/f8590bd97b17678aac2c05699b179711a485c06b`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/f8590bd97b17678aac2c05699b179711a485c06b)
 - **Đường dẫn tệp báo cáo trực tiếp trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/blob/docs/m0-task-05b-architecture-survey/docs/architecture/phase-05b-isnet-anime-survey.md`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/blob/docs/m0-task-05b-architecture-survey/docs/architecture/phase-05b-isnet-anime-survey.md)
 
