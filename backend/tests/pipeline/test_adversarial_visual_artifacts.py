@@ -267,6 +267,14 @@ class TestEmpiricalImageTruthfulness:
         assert soft_gown == 44001, f"Expected 44,001 soft gown pixels, got {soft_gown}"
         assert soft_gown / gown_crop.size > 0.70, "Gown should have >70% soft pixels"
 
+        # Wing crop: [300:550, 580:830]
+        wing_crop = alpha_05[300:550, 580:830]
+        wing_soft = int(np.sum((wing_crop > 0) & (wing_crop < 255)))
+        assert wing_soft == 2746, f"Expected 2,746 soft wing pixels, got {wing_soft}"
+        wing_soft_vals = wing_crop[(wing_crop > 0) & (wing_crop < 255)]
+        wing_p50 = int(np.percentile(wing_soft_vals, 50))
+        assert wing_p50 == 110, f"Expected wing median alpha = 110, got {wing_p50}"
+
         # Diagnostic transitional alpha range (10 <= alpha <= 245)
         transitional_pixels = int(np.sum((alpha_05 >= 10) & (alpha_05 <= 245)))
         assert transitional_pixels == 160824, f"Expected 160,824 transitional pixels, got {transitional_pixels}"

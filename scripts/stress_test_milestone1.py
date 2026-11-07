@@ -430,8 +430,15 @@ async def stress_test_isnet_provider_concurrency(tmp_path: Path) -> list[dict[st
                     alpha_arr = np.array(img.getchannel("A"))
                     assert int(alpha_arr.min()) <= 5
                     assert int(alpha_arr.max()) >= 250
-                    soft_count = int(np.count_nonzero((alpha_arr >= 10) & (alpha_arr <= 245)))
-                    assert soft_count > 0, f"{name}: no soft alpha"
+                    total_px = alpha_arr.size
+                    n_trans = int(np.count_nonzero(alpha_arr == 0))
+                    n_soft = int(np.count_nonzero((alpha_arr > 0) & (alpha_arr < 255)))
+                    n_solid = int(np.count_nonzero(alpha_arr == 255))
+                    assert n_trans + n_soft + n_solid == total_px, f"{name}: partition mismatch"
+                    transitional_count = int(np.count_nonzero((alpha_arr >= 10) & (alpha_arr <= 245)))
+                    assert transitional_count <= n_soft, f"{name}: transitional > soft"
+                    assert n_soft > 0, f"{name}: no soft alpha"
+                    assert transitional_count > 0, f"{name}: no transitional alpha"
 
             log(
                 f"  PASS: 3.2 Real Model Concurrency ({len(images_data)} images) completed in {real_total_elapsed:.2f}s "

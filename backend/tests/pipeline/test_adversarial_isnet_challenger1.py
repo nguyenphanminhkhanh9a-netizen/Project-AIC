@@ -328,7 +328,14 @@ class TestISNetProviderConcurrency:
                 alpha_arr = np.array(out_img.getchannel("A"))
                 assert int(alpha_arr.min()) <= 5
                 assert int(alpha_arr.max()) >= 250
-                soft_pixels = int(np.count_nonzero((alpha_arr >= 10) & (alpha_arr <= 245)))
+                total_pixels = alpha_arr.size
+                transparent_pixels = int(np.count_nonzero(alpha_arr == 0))
+                soft_pixels = int(np.count_nonzero((alpha_arr > 0) & (alpha_arr < 255)))
+                solid_pixels = int(np.count_nonzero(alpha_arr == 255))
+                assert transparent_pixels + soft_pixels + solid_pixels == total_pixels
+                transitional_alpha_pixels = int(np.count_nonzero((alpha_arr >= 10) & (alpha_arr <= 245)))
+                assert transitional_alpha_pixels <= soft_pixels
                 assert soft_pixels > 0
+                assert transitional_alpha_pixels > 0
 
         provider.release()
