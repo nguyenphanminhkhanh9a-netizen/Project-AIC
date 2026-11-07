@@ -8,6 +8,7 @@
 **Commit khảo sát cơ sở trên remote:** `8b92a2b821a4844925640c184ca7570736053151` (Đã đẩy lên remote origin)  
 **Commit hiệu đính & kiểm chứng R1 trên remote:** `0f9160c99823ce025738c30c70ca81280020cc8e` (Đã đẩy lên remote origin)  
 **Commit kiểm toán đối kháng Reviewer R1 trên remote:** `f8590bd97b17678aac2c05699b179711a485c06b` (Đã đẩy lên remote origin)  
+**Commit kiểm toán đối kháng Reviewer R2 trên remote:** `7949c0afe55c7c504689fc2e44d00ccf829a709f` (Đã đẩy lên remote origin)  
 **Tác giả:** worker_05b_1 (Teamwork Subagent — Proposal Report Author)  
 **Ngày lập & Cập nhật:** 07/11/2026 (Hiệu đính & Kiểm chứng Thực nghiệm R1–R5)  
 **Chế độ tuân thủ:** Integrity Mode Development — Cam kết trung thực tuyệt đối, không gian lận, không giả lập kết quả.
@@ -443,6 +444,48 @@ Quy trình tiền xử lý toán học bắt buộc phải sử dụng **đệm 
 4. Dán ảnh đã co dãn vào giữa canvas $1024 \times 1024$ nền đen `(0, 0, 0)` hoặc xám trung tính `(128, 128, 128)`.
 5. Chuẩn hóa ma trận điểm ảnh sang `float32` trong khoảng $[0.0, 1.0]$, áp dụng phân phối ImageNet ($\mu = [0.485, 0.456, 0.406], \sigma = [0.229, 0.224, 0.225]$), chuyển trục từ HWC sang NCHW `(1, 3, 1024, 1024)`.
 
+```python
+def preprocess_letterbox(
+    img: Image.Image,
+    target_size: int = 1024,
+) -> tuple[np.ndarray, dict[str, int]]:
+  """Đệm khung đối xứng letterbox về [1, 3, 1024, 1024] và chuẩn hóa ImageNet."""
+  rgb_img = img.convert("RGB")
+  w_orig, h_orig = rgb_img.size
+
+  scale = min(target_size / w_orig, target_size / h_orig)
+  w_new = max(1, round(w_orig * scale))
+  h_new = max(1, round(h_orig * scale))
+
+  resized = rgb_img.resize((w_new, h_new), Image.Resampling.BILINEAR)
+
+  pad_x = (target_size - w_new) // 2
+  pad_y = (target_size - h_new) // 2
+
+  canvas = Image.new("RGB", (target_size, target_size), (0, 0, 0))
+  canvas.paste(resized, (pad_x, pad_y))
+
+  # Chuyển đổi sang float32 [0.0, 1.0] và chuẩn hóa phân phối ImageNet
+  arr = np.array(canvas, dtype=np.float32) / 255.0
+  mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+  std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+  norm_arr = (arr - mean) / std
+
+  # Chuyển trục HWC -> CHW -> NCHW (1, 3, 1024, 1024)
+  tensor = np.transpose(norm_arr, (2, 0, 1))
+  tensor = np.expand_dims(tensor, axis=0)
+
+  pad_meta = {
+      "pad_x": pad_x,
+      "pad_y": pad_y,
+      "w_new": w_new,
+      "h_new": h_new,
+      "w_orig": w_orig,
+      "h_orig": h_orig,
+  }
+  return tensor, pad_meta
+```
+
 #### Phân định Rạch ròi: Phép thử Bảo toàn Hình học (Geometry Preservation Test)
 Trong quá trình thử nghiệm thuật toán lưới tọa độ, một bài kiểm tra độ lệch tọa độ khứ hồi (Round-Trip Coordinate Projection Test) đã được thực hiện trên **17 kích thước và tỷ lệ khung hình đại diện**:
 - Nhóm ảnh vuông: $512 \times 512$, $1024 \times 1024$.
@@ -472,6 +515,45 @@ Sau khi mô hình ONNX xuất ra tensor mặt nạ thô `(1, 1, 1024, 1024)`:
    \text{round}\left(255 \cdot \frac{p(x, y) - T_{\text{low}}}{T_{\text{high}} - T_{\text{low}}}\right) & \text{khi } T_{\text{low}} < p(x, y) < T_{\text{high}}
    \end{cases}$$
    Với ngưỡng tiêu chuẩn kiểm nghiệm: $T_{\text{low}} = 0.05$ và $T_{\text{high}} = 0.95$.
+
+```python
+def postprocess_mask(
+    raw_mask: np.ndarray,
+    pad_meta: dict[str, int],
+    orig_size: tuple[int, int],
+    t_low: float = 0.05,
+    t_high: float = 0.95,
+) -> Image.Image:
+  """Hậu xử lý unpad, sigmoid và chuyển tiếp dải alpha mềm liên tục."""
+  mask = np.squeeze(raw_mask)  # [1024, 1024]
+
+  # Khử logits nếu tensor đầu ra chưa nằm trong khoảng xác suất [0.0, 1.0]
+  if mask.min() < 0.0 or mask.max() > 1.0:
+    mask = 1.0 / (1.0 + np.exp(-np.clip(mask, -20.0, 20.0)))
+
+  # Cắt bỏ phần viền đệm (Crop Padding)
+  pad_x = pad_meta["pad_x"]
+  pad_y = pad_meta["pad_y"]
+  w_new = pad_meta["w_new"]
+  h_new = pad_meta["h_new"]
+  cropped_prob = mask[pad_y : pad_y + h_new, pad_x : pad_x + w_new]
+
+  # Phóng to trở lại kích thước gốc bằng Bilinear Unpadding
+  prob_img = Image.fromarray((cropped_prob * 255.0).astype(np.uint8))
+  w_orig, h_orig = orig_size
+  unpadded_img = prob_img.resize((w_orig, h_orig), Image.Resampling.BILINEAR)
+  prob_arr = np.array(unpadded_img, dtype=np.float32) / 255.0
+
+  # Áp dụng hàm chuyển tiếp dải Alpha mềm (Continuous Soft Alpha Ramp)
+  alpha = np.zeros_like(prob_arr, dtype=np.uint8)
+  mid_mask = (prob_arr > t_low) & (prob_arr < t_high)
+  alpha[prob_arr >= t_high] = 255
+  alpha[mid_mask] = np.round(
+      255.0 * (prob_arr[mid_mask] - t_low) / (t_high - t_low)
+  ).astype(np.uint8)
+
+  return Image.fromarray(alpha)
+```
 
 ### 4.4 Bộ lọc Tinh chỉnh Cạnh Biên Tùy chọn (Guided Filter)
 Bộ lọc Guided Image Filter có thể dùng ảnh RGB gốc làm ảnh dẫn đường (guide image) để định hình lại kênh alpha mờ. Thuật toán giả định mối quan hệ tuyến tính giữa cường độ màu của ảnh gốc và độ đục alpha trong cửa sổ lân cận hẹp $\omega_k$: $\alpha_i = a_k I_i + b_k$. Kết quả mang lại độ sắc nét hoàn hảo cho các sợi tóc mảnh, tuy nhiên có chi phí tính toán khoảng 15–40 ms trên CPU. Bộ lọc này được đề xuất dưới dạng tùy chọn cấu hình (`enable_guided_filter=False` mặc định).
@@ -648,6 +730,21 @@ Quá trình khởi tạo GPU có thể gãy đổ ở hai thời điểm khác n
 Nhà cung cấp ONNX cài đặt cơ chế cô lập lỗi 2 tầng:
 
 ```python
+import asyncio
+import gc
+import io
+import logging
+from pathlib import Path
+import time
+from typing import Any
+
+import numpy as np
+import onnxruntime as ort
+from PIL import Image
+
+logger = logging.getLogger(__name__)
+
+
 class OnnxBackgroundRemovalProvider(BackgroundRemovalProvider):
 
   def __init__(self, config: PipelineConfig) -> None:
@@ -672,23 +769,33 @@ class OnnxBackgroundRemovalProvider(BackgroundRemovalProvider):
 
   def _init_session_sync(self) -> None:
     """Khởi tạo phiên đồng bộ với cơ chế dự phòng an toàn tuyệt đối."""
-    model_file = Path(self.config.isnet_anime_model_path)
+    model_file = Path(
+        getattr(
+            self.config, "isnet_anime_model_path", "data/models/isnet-anime.onnx"
+        )
+    )
+    expected_sha = getattr(
+        self.config,
+        "isnet_anime_expected_sha256",
+        "f15622d853e8260172812b657053460e20806f04b9e05147d49af7bed31a6e99",
+    )
 
     # BẢO ĐẢM BẤT BIẾN PRE-LOAD: Xác minh mã băm SHA-256 dạng luồng trước khi nạp
     if getattr(self.config, "verify_model_hash", True):
-      if not verify_model_sha256(
-          model_file, self.config.isnet_anime_expected_sha256
-      ):
+      if not verify_model_sha256(model_file, expected_sha):
         raise ModelIntegrityError(
             f"Mã băm của tệp {model_file} không khớp giá trị kỳ vọng "
-            f"({self.config.isnet_anime_expected_sha256}). Từ chối nạp mô hình."
+            f"({expected_sha}). Từ chối nạp mô hình."
         )
 
     model_path = str(model_file)
     available = ort.get_available_providers()
+    enable_gpu = getattr(self.config, "enable_gpu", True)
+    gpu_device_id = getattr(self.config, "gpu_device_id", 0)
+    cpu_threads = getattr(self.config, "cpu_threads", 4)
 
     # TẦNG 1: Thử nghiệm DirectML
-    if self.config.enable_gpu and "DmlExecutionProvider" in available:
+    if enable_gpu and "DmlExecutionProvider" in available:
       try:
         dml_opts = ort.SessionOptions()
         dml_opts.enable_mem_pattern = False  # BẮT BUỘC CHO DIRECTML
@@ -698,10 +805,7 @@ class OnnxBackgroundRemovalProvider(BackgroundRemovalProvider):
         )
 
         providers = [
-            (
-                "DmlExecutionProvider",
-                {"device_id": self.config.gpu_device_id},
-            ),
+            ("DmlExecutionProvider", {"device_id": gpu_device_id}),
             "CPUExecutionProvider",
         ]
         session = ort.InferenceSession(
@@ -717,7 +821,7 @@ class OnnxBackgroundRemovalProvider(BackgroundRemovalProvider):
         self._active_provider = "directml"
         logger.info(
             "Khởi tạo thành công IS-Net Anime trên DirectML (Device: %d)",
-            self.config.gpu_device_id,
+            gpu_device_id,
         )
         return
       except Exception as exc:
@@ -732,7 +836,7 @@ class OnnxBackgroundRemovalProvider(BackgroundRemovalProvider):
     # TẦNG 2: Khởi tạo CPU Dự phòng
     cpu_opts = ort.SessionOptions()
     cpu_opts.enable_mem_pattern = True
-    cpu_opts.intra_op_num_threads = self.config.cpu_threads
+    cpu_opts.intra_op_num_threads = cpu_threads
     cpu_opts.inter_op_num_threads = 1
     cpu_opts.graph_optimization_level = (
         ort.GraphOptimizationLevel.ORT_ENABLE_ALL
@@ -744,7 +848,7 @@ class OnnxBackgroundRemovalProvider(BackgroundRemovalProvider):
     self._active_provider = "cpu"
     logger.info(
         "Khởi tạo thành công IS-Net Anime trên CPU (Threads: %d)",
-        self.config.cpu_threads,
+        cpu_threads,
     )
 
   def _run_inference_sync(
@@ -770,11 +874,14 @@ class OnnxBackgroundRemovalProvider(BackgroundRemovalProvider):
     # 4. Hậu xử lý unpad, sigmoid và tạo dải alpha mềm
     alpha_img = postprocess_mask(raw_mask, pad_meta, (w_orig, h_orig))
 
-    # 5. Kiểm chuẩn 4 cổng chất lượng mặt nạ alpha
+    # 5. Kiểm chuẩn 4 cổng chất lượng mặt nạ alpha với đầy đủ tham số hiệu chuẩn
     valid, err_msg, warnings = validate_alpha_matte(
         alpha_img,
         allow_translucent=kwargs.get("allow_translucent", False),
         allow_full_bleed=kwargs.get("allow_full_bleed", False),
+        min_coverage=kwargs.get("min_coverage", 0.05),
+        max_coverage=kwargs.get("max_coverage", 0.98),
+        min_dimension=kwargs.get("min_dimension", None),
     )
     if not valid:
       raise ValueError(f"Kiểm chuẩn mặt nạ alpha thất bại: {err_msg}")
@@ -792,7 +899,11 @@ class OnnxBackgroundRemovalProvider(BackgroundRemovalProvider):
     meta = {
         "model_name": self.model_name,
         "execution_provider": self.execution_provider,
-        "device_id": self.config.gpu_device_id if self._active_provider == "directml" else None,
+        "device_id": (
+            getattr(self.config, "gpu_device_id", 0)
+            if self._active_provider == "directml"
+            else None
+        ),
         "fallback_occurred": self._fallback_occurred,
         "latency_ms": round(latency_ms, 2),
         "input_shape": [1, 3, 1024, 1024],
@@ -890,9 +1001,11 @@ async def remove_background(
     self._ensure_session_loaded()
 
     try:
-      # Thực thi suy luận trên provider hiện tại (DirectML nếu khả dụng)
-      return await asyncio.to_thread(self._run_inference_sync, image_bytes)
-    except ort.OrtException as exc:
+      # Thực thi suy luận trên provider hiện tại (DirectML nếu khả dụng), bảo toàn đầy đủ **kwargs
+      return await asyncio.to_thread(
+          self._run_inference_sync, image_bytes, **kwargs
+      )
+    except (ort.OrtException, RuntimeError) as exc:
       err_msg = str(exc)
 
       # BƯỚC 1: Bắt và phân loại ngoại lệ HRESULT DirectX (OOM / Device Removed / Device Hung)
@@ -924,15 +1037,23 @@ async def remove_background(
       gc.collect()
 
       # BƯỚC 4: Khởi tạo phiên làm việc CPU mới với cấu hình an toàn
+      cpu_threads = getattr(self.config, "cpu_threads", 4)
+      model_path = str(
+          getattr(
+              self.config,
+              "isnet_anime_model_path",
+              "data/models/isnet-anime.onnx",
+          )
+      )
       cpu_opts = ort.SessionOptions()
       cpu_opts.enable_mem_pattern = True
-      cpu_opts.intra_op_num_threads = self.config.cpu_threads
+      cpu_opts.intra_op_num_threads = cpu_threads
       cpu_opts.inter_op_num_threads = 1
       cpu_opts.graph_optimization_level = (
           ort.GraphOptimizationLevel.ORT_ENABLE_ALL
       )
       self._session = ort.InferenceSession(
-          str(self.config.isnet_anime_model_path),
+          model_path,
           cpu_opts,
           providers=["CPUExecutionProvider"],
       )
@@ -947,7 +1068,7 @@ async def remove_background(
           " thành công."
       )
       out_bytes, meta = await asyncio.to_thread(
-          self._run_inference_sync, image_bytes
+          self._run_inference_sync, image_bytes, **kwargs
       )
       meta["fallback_occurred"] = True
       meta["fallback_reason"] = err_msg
@@ -1131,6 +1252,9 @@ Nhằm phục vụ công tác thanh tra, kiểm toán độc lập của Owner v
 - **Commit kiểm toán đối kháng Reviewer R1:** `f8590bd97b17678aac2c05699b179711a485c06b`
 - **Đường dẫn Commit Reviewer R1 trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/f8590bd97b17678aac2c05699b179711a485c06b`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/f8590bd97b17678aac2c05699b179711a485c06b)
+- **Commit kiểm toán đối kháng Reviewer R2:** `7949c0afe55c7c504689fc2e44d00ccf829a709f`
+- **Đường dẫn Commit Reviewer R2 trên GitHub:**  
+  [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/7949c0afe55c7c504689fc2e44d00ccf829a709f`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/7949c0afe55c7c504689fc2e44d00ccf829a709f)
 - **Đường dẫn tệp báo cáo trực tiếp trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/blob/docs/m0-task-05b-architecture-survey/docs/architecture/phase-05b-isnet-anime-survey.md`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/blob/docs/m0-task-05b-architecture-survey/docs/architecture/phase-05b-isnet-anime-survey.md)
 
