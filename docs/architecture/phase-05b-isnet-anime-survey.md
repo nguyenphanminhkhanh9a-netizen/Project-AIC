@@ -6,6 +6,7 @@
 **Nhánh triển khai đề xuất:** `docs/m0-task-05b-architecture-survey` (phân nhánh từ `main`)  
 **Commit cơ sở:** `fb5b21f0fa59ddc4983d29f1500f5672d3b7205e` (Merge PR #5 — Pipeline Core Phase 0.5A)  
 **Commit khảo sát cơ sở trên remote:** `8b92a2b821a4844925640c184ca7570736053151` (Đã đẩy lên remote origin)  
+**Commit hiệu đính & kiểm chứng R1 trên remote:** `0f9160c99823ce025738c30c70ca81280020cc8e` (Đã đẩy lên remote origin)  
 **Tác giả:** worker_05b_1 (Teamwork Subagent — Proposal Report Author)  
 **Ngày lập & Cập nhật:** 07/11/2026 (Hiệu đính & Kiểm chứng Thực nghiệm R1–R5)  
 **Chế độ tuân thủ:** Integrity Mode Development — Cam kết trung thực tuyệt đối, không gian lận, không giả lập kết quả.
@@ -475,9 +476,12 @@ Sau khi mô hình ONNX xuất ra tensor mặt nạ thô `(1, 1, 1024, 1024)`:
 Bộ lọc Guided Image Filter có thể dùng ảnh RGB gốc làm ảnh dẫn đường (guide image) để định hình lại kênh alpha mờ. Thuật toán giả định mối quan hệ tuyến tính giữa cường độ màu của ảnh gốc và độ đục alpha trong cửa sổ lân cận hẹp $\omega_k$: $\alpha_i = a_k I_i + b_k$. Kết quả mang lại độ sắc nét hoàn hảo cho các sợi tóc mảnh, tuy nhiên có chi phí tính toán khoảng 15–40 ms trên CPU. Bộ lọc này được đề xuất dưới dạng tùy chọn cấu hình (`enable_guided_filter=False` mặc định).
 
 ### 4.5 Khởi tạo Luồng Byte RGBA Đích Thực (4 Kênh Chuẩn PNG)
-Ghép 3 kênh màu gốc $(R, G, B)$ với kênh Alpha mềm đã được chuẩn hóa $(A)$ bằng Pillow:
+Gán kênh Alpha mềm đã chuẩn hóa $(A)$ trực tiếp vào ảnh RGB gốc bằng phương thức tối ưu `putalpha()` của Pillow (tự động xử lý an toàn mọi định dạng màu ban đầu như RGB, RGBA, Palette hay Grayscale mà không gây lỗi unpack kênh):
 ```python
-rgba_image = Image.merge("RGBA", (orig_r, orig_g, orig_b, alpha_channel))
+# Đảm bảo ảnh gốc ở không gian màu RGB trước khi áp dụng alpha
+rgb_image = orig_image.convert("RGB")
+rgba_image = rgb_image.copy()
+rgba_image.putalpha(alpha_channel)
 buffer = io.BytesIO()
 rgba_image.save(buffer, format="PNG", optimize=True)
 transparent_png_bytes = buffer.getvalue()
@@ -489,57 +493,73 @@ transparent_png_bytes = buffer.getvalue()
 Nhà cung cấp dịch vụ tách nền thực thi 4 bước kiểm định tự động trước khi bàn giao luồng byte cho hệ thống:
 
 ```python
-def validate_alpha_matte(alpha: Image.Image) -> tuple[bool, str | None]:
+def validate_alpha_matte(
+    alpha: Image.Image,
+    allow_translucent: bool = False,
+    min_coverage: float = 0.05,
+    max_coverage: float = 0.98,
+    min_dimension: int = 64,
+) -> tuple[bool, str | None, list[str]]:
+  """Kiểm định 4 cổng chất lượng mặt nạ alpha với các cờ hiệu chuẩn linh hoạt."""
+  warnings: list[str] = []
   extrema = alpha.getextrema()
   if extrema is None:
-    return False, "Kênh Alpha không có dữ liệu."
+    return False, "Kênh Alpha không có dữ liệu.", warnings
 
   min_a, max_a = extrema
   # Cổng 1: Kiểm tra cực trị (Phải có cả điểm trong suốt và điểm đục)
-  if max_a < 250:
+  required_max_alpha = 180 if allow_translucent else 250
+  if max_a < required_max_alpha:
     return (
         False,
         "Mặt nạ rỗng hoặc quá mờ: không phát hiện vùng nhân vật đục đặc ruột"
-        f" (max_alpha={max_a} < 250).",
+        f" (max_alpha={max_a} < {required_max_alpha}).",
+        warnings,
     )
   if min_a > 5:
     return (
         False,
         "Mặt nạ đục hoàn toàn: không tách được phông nền trong suốt"
         f" (min_alpha={min_a} > 5).",
+        warnings,
     )
 
   # Cổng 2: Kiểm tra kích thước hộp bao (Bounding Box)
   bbox = alpha.getbbox()
   if bbox is None:
-    return False, "Không phát hiện vùng nhân vật trong kênh Alpha."
+    return False, "Không phát hiện vùng nhân vật trong kênh Alpha.", warnings
   bw, bh = bbox[2] - bbox[0], bbox[3] - bbox[1]
-  if bw < 64 or bh < 64:
-    return False, f"Hộp bao quá nhỏ ({bw}x{bh} < 64x64): nghi ngờ đốm nhiễu."
+  if bw < min_dimension or bh < min_dimension:
+    return (
+        False,
+        f"Hộp bao quá nhỏ ({bw}x{bh} < {min_dimension}x{min_dimension}): nghi ngờ đốm nhiễu.",
+        warnings,
+    )
 
   # Cổng 3: Tỷ lệ bao phủ diện tích nhân vật (Silhouette Coverage Ratio)
   arr = np.array(alpha, dtype=np.uint8)
   coverage = float(np.count_nonzero(arr > 12) / arr.size)
-  if coverage < 0.05:
+  if coverage < min_coverage:
     return (
         False,
-        f"Độ phủ nhân vật ({coverage:.3%}) quá thấp dưới mức cho phép (5%).",
+        f"Độ phủ nhân vật ({coverage:.3%}) quá thấp dưới mức cho phép ({min_coverage:.1%}).",
+        warnings,
     )
-  if coverage > 0.98:
+  if coverage > max_coverage:
     return (
         False,
-        f"Độ phủ nhân vật ({coverage:.3%}) vượt quá 98%, phông nền chưa được"
-        " xóa sạch.",
+        f"Độ phủ nhân vật ({coverage:.3%}) vượt quá {max_coverage:.1%}, phông nền chưa được xóa sạch.",
+        warnings,
     )
 
   # Cổng 4: Kiểm tra sự tồn tại của dải giá trị chuyển tiếp (Soft Gradient)
   hist = alpha.histogram()
   has_soft_edge = any(hist[i] > 0 for i in range(10, 245))
   if not has_soft_edge:
-    # Cảnh báo viền nhị phân cứng nhưng vẫn cho phép nếu đạt các chỉ số trên
-    pass
+    # Cảnh báo viền nhị phân cứng: không từ chối cứng mà ghi nhận cảnh báo chẩn đoán
+    warnings.append("soft_alpha_missing")
 
-  return True, None
+  return True, None, warnings
 ```
 
 #### Bảng Kiểm toán Chi tiết: Cơ sở Lý thuyết, Tình huống Loại bỏ Nhầm & Phương án Hiệu chuẩn:
@@ -627,6 +647,14 @@ class OnnxBackgroundRemovalProvider(BackgroundRemovalProvider):
     self._active_provider: str = "uninitialized"
     self._lock = asyncio.Lock()
     self._fallback_occurred: bool = False
+
+  @property
+  def model_name(self) -> str:
+    return "isnet_anime"
+
+  @property
+  def execution_provider(self) -> str:
+    return self._active_provider
 
   def _init_session_sync(self) -> None:
     """Khởi tạo phiên đồng bộ với cơ chế dự phòng an toàn tuyệt đối."""
@@ -740,7 +768,8 @@ Nhằm cung cấp bằng chứng thực nghiệm chính xác, một kịch bản
 ### 5.6 Vòng đời Phiên Thực thi, Khởi tạo Lười (Lazy Loading) và Kiểm soát Đồng thời
 1. **Khởi tạo Lười (Lazy Initialization):** Quá trình nạp mô hình vào RAM và VRAM chỉ diễn ra khi có yêu cầu tách nền đầu tiên hoặc khi lệnh CLI warmup được gọi.
 2. **Kiểm soát Đồng thời (Concurrency Governor):** Cấu hình `worker_concurrency = 1` bảo đảm xử lý tuần tự từng ảnh trong nền. Khóa bất đồng bộ `asyncio.Lock` trong provider ngăn chặn triệt để tình trạng hai coroutine cùng khởi tạo phiên đồng thời hoặc gửi lệnh song song vào DirectML gây xung đột tài nguyên đồ họa.
-3. **Giải phóng Bộ nhớ Triệt để (`release()`):**
+3. **Thực thi Bất đồng bộ Không Chặn Event Loop (Non-blocking Thread Offloading):** Hàm C++ `session.run()` của ONNX Runtime là tác vụ tính toán nặng (compute-bound) đồng bộ và chặn luồng (blocking). Để bảo đảm server FastAPI không bị đóng băng (không làm nghẽn các endpoint kiểm tra sức khỏe `/healthz` hay các tiến trình HTTP khác), phương thức bất đồng bộ `remove_background()` bắt buộc phải ủy thác hàm suy luận đồng bộ sang luồng riêng qua `await asyncio.to_thread(self._run_inference_sync, ...)`.
+4. **Giải phóng Bộ nhớ Triệt để (`release()`):**
    ```python
    def release(self) -> None:
      if self._session is not None:
@@ -781,9 +810,11 @@ async def remove_background(
 
     try:
       # Thực thi suy luận trên provider hiện tại (DirectML nếu khả dụng)
-      return await self._run_inference(image_bytes)
+      return await asyncio.to_thread(self._run_inference_sync, image_bytes)
     except ort.OrtException as exc:
       err_msg = str(exc)
+
+      # BƯỚC 1: Bắt và phân loại ngoại lệ HRESULT DirectX (OOM / Device Removed / Device Hung)
       is_gpu_oom = any(
           marker in err_msg
           for marker in [
@@ -805,31 +836,41 @@ async def remove_background(
           err_msg,
       )
 
-      # BƯỚC 1: Hủy bỏ phiên DirectML bị lỗi
+      # BƯỚC 2: Hủy bỏ phiên DirectML bị tê liệt
       self._session = None
 
-      # BƯỚC 2: Thu hồi cưỡng bức con trỏ COM và dọn dẹp bộ nhớ
+      # BƯỚC 3: Thu hồi cưỡng bức con trỏ COM và dọn dẹp bộ nhớ đồ họa
       gc.collect()
 
-      # BƯỚC 3: Khởi tạo phiên làm việc CPU mới với cấu hình an toàn
+      # BƯỚC 4: Khởi tạo phiên làm việc CPU mới với cấu hình an toàn
       cpu_opts = ort.SessionOptions()
       cpu_opts.enable_mem_pattern = True
       cpu_opts.intra_op_num_threads = self.config.cpu_threads
+      cpu_opts.inter_op_num_threads = 1
+      cpu_opts.graph_optimization_level = (
+          ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+      )
       self._session = ort.InferenceSession(
           str(self.config.isnet_anime_model_path),
           cpu_opts,
           providers=["CPUExecutionProvider"],
       )
 
-      # BƯỚC 4: Chốt trạng thái vĩnh viễn (Latch) để ngăn flapping
+      # BƯỚC 5: Chốt trạng thái vĩnh viễn (Latch) sang CPU để ngăn flapping
       self._active_provider = "cpu"
       self._fallback_occurred = True
 
-      # BƯỚC 5: Thực hiện lại tác vụ suy luận cho ảnh đó trên CPU
+      # BƯỚC 6: Thực hiện lại tác vụ suy luận trên CPU và đính kèm siêu dữ liệu chẩn đoán
       logger.info(
-          "Tái thực hiện suy luận cho ảnh hiện tại trên CPUExecutionProvider thành công."
+          "Tái thực hiện suy luận cho ảnh hiện tại trên CPUExecutionProvider"
+          " thành công."
       )
-      return await self._run_inference(image_bytes)
+      out_bytes, meta = await asyncio.to_thread(
+          self._run_inference_sync, image_bytes
+      )
+      meta["fallback_occurred"] = True
+      meta["fallback_reason"] = err_msg
+      return out_bytes, meta
 ```
 
 ### 5.8 Bảo tồn Tính Trừu tượng và Nhà cung cấp Giả lập Cho Môi trường CI
@@ -916,6 +957,8 @@ Trong môi trường kiểm thử CI (GitHub Actions), cấu hình mặc định
     return model_path
   ```
 
+*Lưu ý về phụ thuộc kiểm thử:* Fixture sinh mô hình nhân tạo sử dụng thư viện `onnx` (trình biên dịch protobuf đồ thị ONNX). Do đó, giai đoạn 0.5B cần khai báo `onnx` trong nhóm phụ thuộc kiểm thử (`dev-dependencies`) trong `backend/pyproject.toml`, HOẶC lưu trữ sẵn tệp nhị phân fixture siêu nhẹ ~2 KB này tại `backend/tests/fixtures/synthetic_isnet.onnx` để bộ kiểm thử Tầng 2 trên CI có thể chạy thuần túy với gói `onnxruntime` mà không cần cài thêm `onnx`.
+
 > **CẢNH BÁO PHƯƠNG PHÁP LUẬN BẮT BUỘC VỀ TẦNG 2:**  
 > Mô hình ONNX nhân tạo 2 KB **CHỈ ĐƯỢC THIẾT KẾ ĐỂ KIỂM CHỨNG TÍNH HỢP LỆ CỦA LỚP ADAPTER, HỢP ĐỒNG TENSOR VÀ QUY TRÌNH TÍCH HỢP PIPELINE** (kiểm tra tiền xử lý letterbox đối xứng, unpadding khôi phục tọa độ gốc, khử logits qua Sigmoid, trích xuất dải alpha mềm và chuyển giao dữ liệu cho `PipelineWorker`).  
 > **MÔ HÌNH NHÂN TẠO 2 KB HOÀN TOÀN KHÔNG CHỨNG MINH ĐƯỢC HOẠT ĐỘNG CỦA MÔ HÌNH THỰC TẾ IS-NET CŨNG NHƯ KHÔNG PHẢN ÁNH CHẤT LƯỢNG PHÂN VÙNG AI**. Không được nhầm lẫn giữa việc pass Tầng 2 với việc mô hình AI đã bóc nền anime đạt yêu cầu.
@@ -971,7 +1014,7 @@ Trong môi trường kiểm thử CI (GitHub Actions), cấu hình mặc định
 Khi Owner chính thức phê duyệt báo cáo khảo sát kiến trúc này, giai đoạn triển khai mã nguồn tiếp theo của Phase 0.5B sẽ tiến hành các thay đổi độc lập và an toàn như sau:
 
 ### 8.1 Danh mục Tệp Dự kiến:
-1. `backend/pyproject.toml` (Sửa đổi): Bổ sung phụ thuộc `onnxruntime-directml>=1.19.0` (cho Windows) hoặc `onnxruntime>=1.19.0` (cho Linux CI).
+1. `backend/pyproject.toml` (Sửa đổi): Bổ sung phụ thuộc `onnxruntime-directml>=1.19.0` (cho Windows) hoặc `onnxruntime>=1.19.0` (cho Linux CI); bổ sung `onnx` vào nhóm `dev-dependencies` phục vụ fixture kiểm thử Tầng 2 (hoặc đóng gói sẵn tệp nhị phân fixture 2 KB).
 2. `backend/app/pipeline/config.py` (Sửa đổi): Bổ sung các thiết lập cấu hình đường dẫn `isnet_anime_model_path`, mã băm kỳ vọng, cờ kích hoạt GPU, và `use_mock_bg_provider`.
 3. `backend/app/pipeline/background/image_ops.py` (Tạo mới): Chứa các hàm toán học thuần túy xử lý letterbox, unpad, sigmoid và 4 cổng kiểm định mặt nạ alpha.
 4. `backend/app/pipeline/background/isnet_provider.py` (Tạo mới): Triển khai lớp `OnnxBackgroundRemovalProvider` tuân thủ Protocol `BackgroundRemovalProvider`.
@@ -999,8 +1042,11 @@ Nhằm phục vụ công tác thanh tra, kiểm toán độc lập của Owner v
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/tree/docs/m0-task-05b-architecture-survey`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/tree/docs/m0-task-05b-architecture-survey)
 - **Commit cơ sở từ PR #5:** `fb5b21f0fa59ddc4983d29f1500f5672d3b7205e` (Merge PR #5 — Pipeline Core Phase 0.5A).
 - **Commit khảo sát ban đầu trên remote:** `8b92a2b821a4844925640c184ca7570736053151`
-- **Đường dẫn Commit trên GitHub:**  
+- **Đường dẫn Commit khảo sát ban đầu trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/8b92a2b821a4844925640c184ca7570736053151`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/8b92a2b821a4844925640c184ca7570736053151)
+- **Commit hiệu đính & kiểm chứng thực nghiệm R1:** `0f9160c99823ce025738c30c70ca81280020cc8e`
+- **Đường dẫn Commit hiệu đính R1 trên GitHub:**  
+  [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/0f9160c99823ce025738c30c70ca81280020cc8e`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/commit/0f9160c99823ce025738c30c70ca81280020cc8e)
 - **Đường dẫn tệp báo cáo trực tiếp trên GitHub:**  
   [`https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/blob/docs/m0-task-05b-architecture-survey/docs/architecture/phase-05b-isnet-anime-survey.md`](https://github.com/nguyenphanminhkhanh9a-netizen/Project-AIC/blob/docs/m0-task-05b-architecture-survey/docs/architecture/phase-05b-isnet-anime-survey.md)
 
