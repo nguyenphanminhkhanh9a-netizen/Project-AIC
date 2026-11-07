@@ -162,6 +162,12 @@ class TestImageOpsExtremeDimensions:
         assert alphas[9] == 255
         assert alphas[10] == 255
 
+        # Inverted or equal thresholds (t_high <= t_low) must raise ValueError
+        with pytest.raises(ValueError, match="must be strictly greater than"):
+            apply_soft_alpha_ramp(probs, t_low=0.95, t_high=0.05)
+        with pytest.raises(ValueError, match="must be strictly greater than"):
+            apply_soft_alpha_ramp(probs, t_low=0.50, t_high=0.50)
+
 
 class TestModelVerifierAdversarial:
     """Stress testing model_verifier.py with malicious payloads, wrong sizes, and bitflips."""

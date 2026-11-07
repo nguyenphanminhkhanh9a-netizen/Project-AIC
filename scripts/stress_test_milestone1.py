@@ -203,6 +203,11 @@ def stress_test_soft_alpha_ramp_boundaries() -> None:
     assert alphas[8] == 255, "0.9501 should be 255"
     assert alphas[9] == 255, "1.0 should be 255"
     assert alphas[10] == 255, "Excess probability should be clamped to 255"
+    try:
+        apply_soft_alpha_ramp(probs, t_low=0.95, t_high=0.05)
+        raise AssertionError("Inverted thresholds should raise ValueError")
+    except ValueError:
+        pass
 
     log("  PASS: Soft alpha ramp boundary values correctly clamped and interpolated.")
 

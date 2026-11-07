@@ -98,6 +98,9 @@ def apply_soft_alpha_ramp(
     Returns:
         2D np.ndarray of type uint8 in range [0, 255].
     """
+    if t_high <= t_low:
+        raise ValueError(f"t_high ({t_high}) must be strictly greater than t_low ({t_low})")
+
     # Linear ramp formula
     scaled = (prob_arr - t_low) / (t_high - t_low) * 255.0
     alpha = np.clip(np.round(scaled), 0.0, 255.0).astype(np.uint8)
@@ -182,6 +185,10 @@ def postprocess_mask(
     # Note: transitional_alpha_pixels is a fine-grained subset of soft_pixels, not a replacement
     transitional_alpha_pixels = int(np.count_nonzero((alpha_arr >= 10) & (alpha_arr <= 245)))
     transitional_alpha_ratio = float(transitional_alpha_pixels / total_pixels)
+    if transitional_alpha_pixels > soft_pixels:
+        raise ValueError(
+            f"Transitional alpha ({transitional_alpha_pixels}) exceeds soft pixels ({soft_pixels})"
+        )
 
     metadata: dict[str, Any] = {
         "dimensions": [meta.orig_width, meta.orig_height],

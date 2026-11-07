@@ -112,6 +112,9 @@ async def run_benchmark() -> None:
             # Detailed transitional alpha threshold (10 <= alpha <= 245) for anti-aliasing gradient analysis
             transitional_px = int(np.count_nonzero((alpha_arr >= 10) & (alpha_arr <= 245)))
             transitional_pct = float(transitional_px / total_px * 100.0)
+            assert transitional_px <= n_soft, (
+                f"{s_id}: transitional ({transitional_px}) > soft ({n_soft})"
+            )
 
             # Check RGB preservation on solid pixels
             solid_mask = alpha_arr == 255

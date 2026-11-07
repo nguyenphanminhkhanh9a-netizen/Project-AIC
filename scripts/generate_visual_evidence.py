@@ -351,6 +351,7 @@ def process_sample(sample_code: str, full_key: str, description: str) -> dict:
     n_solid = int(np.count_nonzero(alpha_arr == 255))
     transitional_px = int(np.count_nonzero((alpha_arr >= 10) & (alpha_arr <= 245)))
     assert n_trans + n_soft + n_solid == total_px, f"Partition mismatch: {n_trans} + {n_soft} + {n_solid} != {total_px}"
+    assert transitional_px <= n_soft, f"Transitional alpha ({transitional_px}) > soft ({n_soft})"
 
     return {
         "sample_code": sample_code,

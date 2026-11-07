@@ -116,6 +116,9 @@ async def test_real_cpu_inference_on_anime_sample(
 
         # Detailed transitional alpha threshold (10 <= alpha <= 245) for anti-aliasing gradient analysis
         transitional_alpha_pixels = int(np.count_nonzero((alpha_arr >= 10) & (alpha_arr <= 245)))
+        assert transitional_alpha_pixels <= soft_pixels, (
+            f"{sample_name}: transitional ({transitional_alpha_pixels}) > soft ({soft_pixels})"
+        )
         assert transitional_alpha_pixels > 0, (
             f"{sample_name}: No transitional alpha detected in [10, 245] range"
         )
