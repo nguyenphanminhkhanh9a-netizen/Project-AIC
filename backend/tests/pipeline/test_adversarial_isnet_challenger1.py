@@ -304,7 +304,7 @@ class TestISNetProviderConcurrency:
     async def test_real_model_concurrent_inference_stress(self) -> None:
         """Verifies real model inference with 5 concurrent requests if model is installed."""
         model_path = Path.home() / ".cache" / "project_aic" / "models" / "isnetis.onnx"
-        fixtures_dir = Path("tests/fixtures/real_anime")
+        fixtures_dir = Path(__file__).resolve().parent.parent / "fixtures" / "real_anime"
 
         if not (model_path.is_file() and fixtures_dir.is_dir()):
             pytest.skip("Real model weights or anime fixtures are not available")

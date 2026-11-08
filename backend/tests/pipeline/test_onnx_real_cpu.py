@@ -23,8 +23,8 @@ from app.pipeline.background.isnet_provider import ISNetONNXProvider
 from app.pipeline.config import PipelineConfig
 
 MODEL_DEFAULT_PATH = Path(os.path.expanduser("~/.cache/project_aic/models/isnetis.onnx"))
-FIXTURES_DIR = Path("tests/fixtures/real_anime")
-OUTPUT_DIR = Path("../data/tier3_output").resolve()
+FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "real_anime"
+OUTPUT_DIR = Path(__file__).resolve().parents[3] / "data" / "tier3_output"
 
 has_real_model = MODEL_DEFAULT_PATH.is_file()
 has_fixtures = FIXTURES_DIR.is_dir() and len(list(FIXTURES_DIR.glob("*.png"))) >= 5

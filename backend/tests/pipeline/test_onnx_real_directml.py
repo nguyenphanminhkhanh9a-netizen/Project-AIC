@@ -27,8 +27,8 @@ from app.pipeline.background.isnet_directml_provider import ISNetDirectMLProvide
 from app.pipeline.config import PipelineConfig
 
 MODEL_DEFAULT_PATH = Path(os.path.expanduser("~/.cache/project_aic/models/isnetis.onnx"))
-FIXTURES_DIR = Path("tests/fixtures/real_anime")
-OUTPUT_DIR = Path("../data/tier3_output").resolve()
+FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "real_anime"
+OUTPUT_DIR = Path(__file__).resolve().parents[3] / "data" / "tier3_output"
 
 has_real_model = MODEL_DEFAULT_PATH.is_file()
 has_fixtures = FIXTURES_DIR.is_dir() and len(list(FIXTURES_DIR.glob("*.png"))) >= 5
@@ -51,13 +51,14 @@ SAMPLE_NAMES = [
 @pytest.fixture(scope="module")
 def isnet_directml_provider() -> Generator[BackgroundRemovalProvider, None, None]:
     """Initializes a real ISNetDirectMLProvider for the test module and warms up DirectML shaders."""
+    target_device_id = int(os.environ.get("AIC_PIPELINE_DIRECTML_DEVICE_ID", "1"))
     config = PipelineConfig(
         use_mock_bg_provider=False,
         onnx_execution_provider="directml",
         isnet_anime_model_path=MODEL_DEFAULT_PATH,
         isnet_model_sha256="f15622d853e8260172812b657053460e20806f04b9e05147d49af7bed31a6e99",
         isnet_model_expected_size=176_069_933,
-        directml_device_id=0,
+        directml_device_id=target_device_id,
     )
     provider = ISNetDirectMLProvider(config=config)
     # Warm up DirectML session and DirectX shader compilation to avoid cold-start timing jitter

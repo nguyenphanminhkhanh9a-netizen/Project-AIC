@@ -47,6 +47,10 @@ class DirectMLConcurrencyError(DirectMLError):
     """Raised when concurrent inference is attempted on a DirectML session."""
 
 
+class DirectMLTimeoutError(DirectMLError, TimeoutError):
+    """Raised when DirectML session release times out waiting for active inference to finish."""
+
+
 class ISNetDirectMLProvider(BackgroundRemovalProvider):
     """GPU-accelerated DirectML provider for IS-Net Anime matting via ONNX Runtime."""
 
@@ -188,6 +192,10 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
             self._inference_lock.acquire(blocking=True)
 
         try:
+            # Re-check session inside lock to prevent race if release() executed before acquisition
+            if self._session is None or self._input_name is None:
+                raise RuntimeError("IS-Net DirectML session is not loaded")
+
             if self._is_inferring:
                 raise DirectMLConcurrencyError(
                     "Concurrent inference on DirectML session is strictly prohibited."
@@ -246,23 +254,62 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
                 self._load_session_sync()
             return await asyncio.to_thread(self._run_inference_sync, image_bytes, **kwargs)
 
-    def release(self) -> None:
-        """Safely and idempotently deallocates DirectML session and GPU resources."""
+    def _destroy_session_sync(self) -> None:
+        """Internal helper to deallocate session and reset provider state under locks."""
+        if self._session is not None:
+            logger.info("Releasing IS-Net DirectML InferenceSession and GPU memory")
+            del self._session
+            self._session = None
+        self._input_name = None
+        self._active_provider = "released"
+        self._is_inferring = False
+        self._inferring_thread_id = None
+        gc.collect()
+
+    def release(self, timeout: float = 5.0) -> None:
+        """Safely and idempotently deallocates DirectML session and GPU resources.
+
+        Args:
+            timeout: Maximum seconds to wait for active inference to finish.
+
+        Raises:
+            DirectMLTimeoutError: If active inference does not complete within timeout.
+                The session and provider state remain intact so that release may be retried.
+        """
         current_thread = threading.get_ident()
-        # If release is invoked from an external thread while inference is active,
-        # wait for active inference to complete to prevent corrupting the DirectX 12 command queue.
-        if self._inferring_thread_id is not None and self._inferring_thread_id != current_thread:
-            acquired = self._inference_lock.acquire(timeout=5.0)
-            if acquired:
-                self._inference_lock.release()
 
         with self._load_lock:
-            if self._session is not None:
-                logger.info("Releasing IS-Net DirectML InferenceSession and GPU memory")
-                del self._session
-                self._session = None
-            self._input_name = None
-            self._active_provider = "released"
-            self._is_inferring = False
-            self._inferring_thread_id = None
-            gc.collect()
+            # 1. Idempotency: If already released or uninitialized, no-op
+            if self._session is None:
+                self._active_provider = "released"
+                self._input_name = None
+                self._is_inferring = False
+                self._inferring_thread_id = None
+                return
+
+            # 2. Check if release is invoked from within the active inference thread
+            is_self_inference = (
+                self._inferring_thread_id is not None
+                and self._inferring_thread_id == current_thread
+            )
+
+            if is_self_inference:
+                # Called re-entrantly from inference thread error handler.
+                # Current thread already holds _inference_lock.
+                self._destroy_session_sync()
+            else:
+                # External caller: must acquire _inference_lock to ensure no active inference is in flight
+                acquired = self._inference_lock.acquire(timeout=timeout)
+                if not acquired:
+                    logger.warning(
+                        "DirectML session release timed out after %.2fs waiting for active inference.",
+                        timeout,
+                    )
+                    raise DirectMLTimeoutError(
+                        f"DirectML session release timed out after {timeout:.2f}s "
+                        f"waiting for active inference to complete."
+                    )
+                try:
+                    self._destroy_session_sync()
+                finally:
+                    self._inference_lock.release()

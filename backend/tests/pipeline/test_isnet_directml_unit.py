@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import io
 import threading
+import time
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -37,6 +38,10 @@ from app.pipeline.background import (
     ISNetONNXProvider,
     MockBackgroundRemovalProvider,
     get_background_removal_provider,
+)
+from app.pipeline.background.isnet_directml_provider import (
+    DirectMLError,
+    DirectMLTimeoutError,
 )
 from app.pipeline.config import PipelineConfig
 
@@ -606,9 +611,10 @@ def test_directml_load_session_sync_concurrent_threads(tmp_path: Path) -> None:
 
 
 def test_directml_external_release_waits_for_active_inference() -> None:
-    """Verifies that an external thread calling release() waits for active inference to finish cleanly."""
+    """Scenario 1: External thread calling release() waits for active inference to finish cleanly."""
     provider = ISNetDirectMLProvider()
     mock_session = MagicMock()
+    mock_session.get_inputs.return_value = [MagicMock(name="input_tensor")]
     provider._session = mock_session
     provider._input_name = "input_tensor"
     provider._active_provider = "directml"
@@ -636,14 +642,13 @@ def test_directml_external_release_waits_for_active_inference() -> None:
     release_finished = threading.Event()
 
     def release_worker() -> None:
-        provider.release()
+        provider.release(timeout=2.0)
         release_finished.set()
 
     t_rel = threading.Thread(target=release_worker)
     t_rel.start()
 
     # Verify release() has NOT finished yet while inference is running
-    import time
     time.sleep(0.05)
     assert not release_finished.is_set(), "release() should wait for active inference"
 
@@ -656,6 +661,222 @@ def test_directml_external_release_waits_for_active_inference() -> None:
     assert release_finished.is_set()
     assert provider._session is None
     assert provider.execution_provider == "released"
+
+
+def test_directml_release_timeout_preserves_session_and_state() -> None:
+    """Scenario 2: Release times out when inference is active; verifies session is preserved and exception raised."""
+    provider = ISNetDirectMLProvider()
+    mock_session = MagicMock()
+    mock_session.get_inputs.return_value = [MagicMock(name="input_tensor")]
+    provider._session = mock_session
+    provider._input_name = "input_tensor"
+    provider._active_provider = "directml"
+
+    inference_started = threading.Event()
+    allow_finish = threading.Event()
+
+    def mock_blocking_run(*args: Any, **kwargs: Any) -> list[np.ndarray]:
+        inference_started.set()
+        allow_finish.wait(timeout=2.0)
+        return [np.zeros((1, 1, 1024, 1024), dtype=np.float32)]
+
+    mock_session.run = mock_blocking_run
+    img_bytes = _create_dummy_png(64, 64)
+
+    t_inf = threading.Thread(target=lambda: provider._run_inference_sync(img_bytes))
+    t_inf.start()
+    assert inference_started.wait(timeout=2.0), "Inference thread did not start"
+
+    # Attempt release with bounded timeout (50ms)
+    with pytest.raises(DirectMLTimeoutError) as exc_info:
+        provider.release(timeout=0.05)
+
+    assert "timed out" in str(exc_info.value).lower()
+    # Invariant check: Session must NOT be destroyed; state must NOT be released!
+    assert provider._session is mock_session
+    assert provider._input_name == "input_tensor"
+    assert provider.execution_provider == "directml"
+    assert provider._is_inferring is True
+
+    # Cleanup
+    allow_finish.set()
+    t_inf.join(timeout=2.0)
+    assert not provider._is_inferring
+
+
+def test_directml_release_retry_succeeds_after_inference_finishes() -> None:
+    """Scenario 3: After release timeout, inference finishes and subsequent release retry succeeds cleanly."""
+    provider = ISNetDirectMLProvider()
+    mock_session = MagicMock()
+    mock_session.get_inputs.return_value = [MagicMock(name="input_tensor")]
+    provider._session = mock_session
+    provider._input_name = "input_tensor"
+    provider._active_provider = "directml"
+
+    inference_started = threading.Event()
+    allow_finish = threading.Event()
+
+    def mock_blocking_run(*args: Any, **kwargs: Any) -> list[np.ndarray]:
+        inference_started.set()
+        allow_finish.wait(timeout=2.0)
+        return [np.zeros((1, 1, 1024, 1024), dtype=np.float32)]
+
+    mock_session.run = mock_blocking_run
+    img_bytes = _create_dummy_png(64, 64)
+
+    t_inf = threading.Thread(target=lambda: provider._run_inference_sync(img_bytes))
+    t_inf.start()
+    assert inference_started.wait(timeout=2.0)
+
+    # 1. Release times out
+    with pytest.raises(DirectMLTimeoutError):
+        provider.release(timeout=0.05)
+
+    assert provider._session is mock_session
+
+    # 2. Allow active inference to finish cleanly
+    allow_finish.set()
+    t_inf.join(timeout=2.0)
+    assert not provider._is_inferring
+
+    # 3. Retry release must succeed immediately without error
+    provider.release(timeout=1.0)
+    assert provider._session is None
+    assert provider.execution_provider == "released"
+    assert provider._input_name is None
+
+
+def test_directml_concurrent_multithreaded_release() -> None:
+    """Scenario 4: Multiple threads concurrently call release(); verifies thread safety and idempotency."""
+    provider = ISNetDirectMLProvider()
+    mock_session = MagicMock()
+    provider._session = mock_session
+    provider._input_name = "input_tensor"
+    provider._active_provider = "directml"
+
+    errors: list[Exception] = []
+
+    def release_worker() -> None:
+        try:
+            provider.release(timeout=1.0)
+        except (DirectMLError, TimeoutError) as exc:
+            errors.append(exc)
+
+    threads = [threading.Thread(target=release_worker) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=2.0)
+
+    assert len(errors) == 0, f"Concurrent release threw unexpected errors: {errors}"
+    assert provider._session is None
+    assert provider.execution_provider == "released"
+    assert provider._input_name is None
+
+
+@pytest.mark.asyncio
+async def test_directml_worker_shutdown_while_inference_in_flight() -> None:
+    """Scenario 5: PipelineWorker.stop() invoked while inference is in flight coordinates cleanly without hanging."""
+    from app.pipeline.worker import PipelineWorker
+
+    cfg = PipelineConfig(worker_concurrency=1)
+    provider = ISNetDirectMLProvider(config=cfg)
+    mock_session = MagicMock()
+    mock_session.get_inputs.return_value = [MagicMock(name="input_tensor")]
+    provider._session = mock_session
+    provider._input_name = "input_tensor"
+    provider._active_provider = "directml"
+
+    inference_started = threading.Event()
+    allow_finish = threading.Event()
+
+    def mock_run(*args: Any, **kwargs: Any) -> list[np.ndarray]:
+        inference_started.set()
+        allow_finish.wait(timeout=2.0)
+        return [np.zeros((1, 1, 1024, 1024), dtype=np.float32)]
+
+    mock_session.run = mock_run
+
+    worker = PipelineWorker(config=cfg, bg_provider=provider)
+    await worker.start()
+
+    img_bytes = _create_dummy_png(64, 64)
+    inf_task = asyncio.create_task(
+        asyncio.to_thread(provider._run_inference_sync, img_bytes)
+    )
+
+    # Wait until inference starts
+    assert await asyncio.to_thread(inference_started.wait, 2.0)
+
+    # Trigger worker shutdown concurrently
+    stop_task = asyncio.create_task(worker.stop())
+
+    # Release inference lock after short pause
+    await asyncio.sleep(0.05)
+    allow_finish.set()
+
+    # Both must complete safely within bounded time
+    await asyncio.wait_for(inf_task, timeout=3.0)
+    await asyncio.wait_for(stop_task, timeout=3.0)
+
+    assert provider._session is None
+    assert provider.execution_provider == "released"
+
+
+def test_directml_concurrent_load_and_release(tmp_path: Path) -> None:
+    """Scenario 6: Concurrent session loading and release coordinate via _load_lock without deadlock or corrupted state."""
+    dummy_model = tmp_path / "dummy.onnx"
+    dummy_model.write_bytes(b"x" * 100)
+
+    config = PipelineConfig(
+        isnet_anime_model_path=dummy_model,
+        isnet_model_sha256="",
+        isnet_model_expected_size=100,
+    )
+    provider = ISNetDirectMLProvider(config=config)
+
+    mock_session = MagicMock()
+    mock_session.get_providers.return_value = ["DmlExecutionProvider"]
+    mock_session.get_inputs.return_value = [MagicMock(name="input_tensor")]
+
+    load_started = threading.Event()
+    allow_load_finish = threading.Event()
+
+    def slow_init(*args: Any, **kwargs: Any) -> MagicMock:
+        load_started.set()
+        allow_load_finish.wait(timeout=2.0)
+        return mock_session
+
+    with (
+        patch("onnxruntime.get_available_providers", return_value=["DmlExecutionProvider"]),
+        patch(
+            "app.pipeline.background.isnet_directml_provider.verify_model_file",
+            return_value="dummy_sha",
+        ),
+        patch("onnxruntime.InferenceSession", side_effect=slow_init),
+    ):
+        t_load = threading.Thread(target=provider._load_session_sync)
+        t_rel = threading.Thread(target=lambda: provider.release(timeout=1.0))
+
+        t_load.start()
+        assert load_started.wait(timeout=2.0)
+
+        # While session loading holds _load_lock, launch release
+        t_rel.start()
+        time.sleep(0.05)
+
+        # Allow loading to complete
+        allow_load_finish.set()
+
+        t_load.join(timeout=2.0)
+        t_rel.join(timeout=2.0)
+
+    assert not t_load.is_alive()
+    assert not t_rel.is_alive()
+    # Provider must end in a consistent state without crashing
+    assert provider.execution_provider in ("released", "directml")
+    if provider.execution_provider == "released":
+        assert provider._session is None
 
 
 @pytest.mark.asyncio
