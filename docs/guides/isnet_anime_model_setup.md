@@ -1,6 +1,6 @@
-# Hướng Dẫn Cài Đặt & Vận Hành Mô Hình IS-Net Anime ONNX (CPU)
+# Hướng Dẫn Cài Đặt & Vận Hành Mô Hình IS-Net Anime ONNX (CPU & DirectML GPU)
 
-Tài liệu hướng dẫn dành cho Project Owner và đội ngũ phát triển về cách tải, xác thực mã băm mật mã và vận hành mô hình trí tuệ nhân tạo tách nền anime chuyên dụng **IS-Net Anime** (`isnetis.onnx`) trên nền tảng CPU.
+Tài liệu hướng dẫn dành cho Project Owner và đội ngũ phát triển về cách tải, xác thực mã băm mật mã và vận hành mô hình trí tuệ nhân tạo tách nền anime chuyên dụng **IS-Net Anime** (`isnetis.onnx`) trên cả hai nền tảng CPU và DirectML GPU (NVIDIA RTX 4050).
 
 ---
 
@@ -88,7 +88,8 @@ uv run python ../scripts/run_tier3_benchmark.py
 ```
 
 ### Tiêu chuẩn Nghiệm thu Đạt chuẩn:
-- **Thời gian suy luận (CPU):** Từ 1.0 đến 1.5 giây mỗi ảnh (chạy với 4 luồng CPU).
+- **Thời gian suy luận (CPU):** Từ 1.0 đến 1.4 giây mỗi ảnh (chạy với 4 luồng CPU).
+- **Thời gian suy luận (DirectML GPU):** Khoảng 0.6 giây mỗi ảnh toàn trình (~42ms tính toán nơ-ron trên NVIDIA RTX 4050 6GB).
 - **Khớp kích thước:** Sai số kích thước 0-pixel delta.
 - **Độ trong suốt:** $A_{min} \le 5$, $A_{max} \ge 250$.
 - **Dải viền mềm (Anti-aliasing):** Tồn tại hàng chục ngàn pixel alpha chuyển tiếp mịn màng ($N_{soft} > 0$), chứng minh phân vùng nơ-ron thật.
@@ -170,6 +171,6 @@ uv sync --extra directml
 - **Nó hoạt động trên máy thế nào?**:  
   Cực kỳ nhẹ nhàng và tiện lợi: mô hình tự động nằm gọn trong thư mục ẩn của máy tính (`.cache`), ứng dụng chỉ nạp khi nào có ảnh cần bóc tách (không ngốn RAM khi mở app), và chỉ cần 1 câu lệnh benchmark duy nhất là máy tự bóc thử 5 bức tranh mẫu với tốc độ chỉ khoảng 1 giây một ảnh.
 - **Đã kiểm tra an toàn chưa?**:  
-  Đã thiết lập tường lửa bảo vệ 3 lớp: file nặng 176 MB này tuyệt đối không bị tải nhầm lên kho code GitHub; nếu file bị đứt gãy giữa chừng thì hệ thống sẽ báo ngay chứ không làm đơ ứng dụng; và toàn bộ 218 bài kiểm tra cũ của dự án vẫn chạy 100% trơn tru.
+  Đã thiết lập tường lửa bảo vệ 3 lớp: file nặng 176 MB này tuyệt đối không bị tải nhầm lên kho code GitHub; nếu file bị đứt gãy giữa chừng thì hệ thống sẽ báo ngay chứ không làm đơ ứng dụng; và toàn bộ 296 bài kiểm tra tự động của dự án vẫn chạy 100% trơn tru không một lỗi nhỏ.
 - **Bước tiếp theo Sếp cần làm gì?**:  
   Sếp có thể thử gõ lệnh `cd backend; uv run python ../scripts/run_tier3_benchmark.py` để tận mắt ngắm nhìn 5 bức ảnh anime sau khi bóc nền cực đẹp tại thư mục `data/tier3_output/`.

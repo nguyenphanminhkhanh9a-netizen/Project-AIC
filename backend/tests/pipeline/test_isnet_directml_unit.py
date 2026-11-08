@@ -554,3 +554,123 @@ def test_pipeline_worker_wires_directml_provider() -> None:
     assert isinstance(worker_cpu.bg_provider, ISNetONNXProvider)
 
 
+def test_directml_load_session_sync_concurrent_threads(tmp_path: Path) -> None:
+    """Verifies that concurrent threads calling _load_session_sync instantiate InferenceSession exactly once."""
+    dummy_model = tmp_path / "dummy.onnx"
+    dummy_model.write_bytes(b"x" * 100)
+
+    config = PipelineConfig(
+        isnet_anime_model_path=dummy_model,
+        isnet_model_sha256="",
+        isnet_model_expected_size=100,
+    )
+    provider = ISNetDirectMLProvider(config=config)
+
+    mock_session = MagicMock()
+    mock_session.get_providers.return_value = ["DmlExecutionProvider"]
+    mock_session.get_inputs.return_value = [MagicMock(name="input_tensor")]
+
+    init_count = 0
+    init_lock = threading.Lock()
+
+    def slow_init(*args: Any, **kwargs: Any) -> MagicMock:
+        nonlocal init_count
+        import time
+
+        with init_lock:
+            init_count += 1
+        time.sleep(0.05)  # Simulate slow session loading & shader compilation
+        return mock_session
+
+    with (
+        patch("onnxruntime.get_available_providers", return_value=["DmlExecutionProvider"]),
+        patch(
+            "app.pipeline.background.isnet_directml_provider.verify_model_file",
+            return_value="dummy_sha",
+        ),
+        patch("onnxruntime.InferenceSession", side_effect=slow_init),
+    ):
+        threads = [
+            threading.Thread(target=provider._load_session_sync)
+            for _ in range(5)
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=3.0)
+
+    # Exactly 1 InferenceSession must be instantiated despite 5 concurrent loader threads
+    assert init_count == 1
+    assert provider._session is mock_session
+    assert provider.execution_provider == "directml"
+
+
+def test_directml_external_release_waits_for_active_inference() -> None:
+    """Verifies that an external thread calling release() waits for active inference to finish cleanly."""
+    provider = ISNetDirectMLProvider()
+    mock_session = MagicMock()
+    provider._session = mock_session
+    provider._input_name = "input_tensor"
+    provider._active_provider = "directml"
+
+    inference_running = threading.Event()
+    allow_finish = threading.Event()
+    inference_completed = threading.Event()
+
+    def mock_run(*args: Any, **kwargs: Any) -> list[np.ndarray]:
+        inference_running.set()
+        allow_finish.wait(timeout=2.0)
+        inference_completed.set()
+        return [np.zeros((1, 1, 1024, 1024), dtype=np.float32)]
+
+    mock_session.run = mock_run
+    img_bytes = _create_dummy_png(64, 64)
+
+    # Thread 1 starts inference
+    t_inf = threading.Thread(target=lambda: provider._run_inference_sync(img_bytes))
+    t_inf.start()
+
+    assert inference_running.wait(timeout=2.0), "Inference thread did not start"
+
+    # Thread 2 calls release() while Thread 1 is still inferring
+    release_finished = threading.Event()
+
+    def release_worker() -> None:
+        provider.release()
+        release_finished.set()
+
+    t_rel = threading.Thread(target=release_worker)
+    t_rel.start()
+
+    # Verify release() has NOT finished yet while inference is running
+    import time
+    time.sleep(0.05)
+    assert not release_finished.is_set(), "release() should wait for active inference"
+
+    # Allow inference to complete
+    allow_finish.set()
+    t_inf.join(timeout=2.0)
+    t_rel.join(timeout=2.0)
+
+    assert inference_completed.is_set()
+    assert release_finished.is_set()
+    assert provider._session is None
+    assert provider.execution_provider == "released"
+
+
+@pytest.mark.asyncio
+async def test_pipeline_worker_stop_releases_bg_provider() -> None:
+    """Verifies that PipelineWorker.stop() automatically invokes release() on its bg_provider."""
+    from app.pipeline.worker import PipelineWorker
+
+    mock_provider = MagicMock(spec=BackgroundRemovalProvider)
+    cfg = PipelineConfig(worker_concurrency=1)
+    worker = PipelineWorker(config=cfg, bg_provider=mock_provider)
+
+    await worker.start()
+    await worker.stop()
+
+    assert mock_provider.release.call_count == 1
+
+
+

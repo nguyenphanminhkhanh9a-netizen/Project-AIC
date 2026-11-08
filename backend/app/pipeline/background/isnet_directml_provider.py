@@ -55,7 +55,9 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
         self._session: ort.InferenceSession | None = None
         self._async_lock = asyncio.Lock()
         self._inference_lock = threading.Lock()
+        self._load_lock = threading.RLock()
         self._is_inferring: bool = False
+        self._inferring_thread_id: int | None = None
         self._active_provider: str = "uninitialized"
         self._input_name: str | None = None
 
@@ -90,76 +92,77 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
 
     def _load_session_sync(self) -> None:
         """Performs pre-flight checks, verifies model integrity, and creates DirectML session."""
-        if self._session is not None:
-            return
+        with self._load_lock:
+            if self._session is not None:
+                return
 
-        # 1. Pre-flight check: Verify DirectML execution provider is available in runtime
-        available_providers = ort.get_available_providers()
-        if "DmlExecutionProvider" not in available_providers:
-            raise DirectMLNotAvailableError(
-                f"DirectML Execution Provider is not available in the current ONNX Runtime installation. "
-                f"Available providers: {available_providers}. "
-                f"Ensure 'onnxruntime-directml' is installed and running on a compatible Windows DirectX 12 environment."
-            )
-
-        # 2. Strict streaming model checksum verification before loading
-        model_path = self._resolve_model_path()
-        expected_sha = (
-            self.config.isnet_model_sha256
-            if self.config.isnet_model_sha256
-            else self.config.isnet_expected_sha256
-        )
-        verify_model_file(
-            model_path=model_path,
-            expected_sha256=expected_sha,
-            expected_size=self.config.isnet_model_expected_size,
-        )
-
-        # 3. Mandatory DirectML Session Options (R3)
-        # Note: DirectML requires ORT_SEQUENTIAL and enable_mem_pattern=False.
-        dml_opts = ort.SessionOptions()
-        dml_opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
-        dml_opts.enable_mem_pattern = False
-        dml_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        dml_opts.inter_op_num_threads = 1
-        dml_opts.intra_op_num_threads = 1  # GPU-bound; avoid spawning unnecessary CPU threads
-
-        device_id = self.config.directml_device_id
-        providers = ["DmlExecutionProvider"]
-        provider_options: list[dict[str, Any]] = [{"device_id": str(device_id)}]
-
-        logger.info(
-            "Initializing IS-Net DirectML InferenceSession from %s (device_id=%d, mem_pattern=False)",
-            model_path,
-            device_id,
-        )
-
-        try:
-            session = ort.InferenceSession(
-                str(model_path),
-                sess_options=dml_opts,
-                providers=providers,
-                provider_options=provider_options,
-            )
-            # 4. Verify that session actually bound to DirectML (no silent CPU fallback)
-            active = session.get_providers()
-            if "DmlExecutionProvider" not in active:
-                raise DirectMLInitializationError(
-                    f"DirectML session was requested but DmlExecutionProvider is not active on session. "
-                    f"Active providers: {active}. Silent CPU fallback is rejected."
+            # 1. Pre-flight check: Verify DirectML execution provider is available in runtime
+            available_providers = ort.get_available_providers()
+            if "DmlExecutionProvider" not in available_providers:
+                raise DirectMLNotAvailableError(
+                    f"DirectML Execution Provider is not available in the current ONNX Runtime installation. "
+                    f"Available providers: {available_providers}. "
+                    f"Ensure 'onnxruntime-directml' is installed and running on a compatible Windows DirectX 12 environment."
                 )
 
-            self._session = session
-            self._input_name = session.get_inputs()[0].name
-            self._active_provider = "directml"
-        except Exception as exc:
-            # Safe resource cleanup on failed initialization
-            self.release()
-            if isinstance(exc, (DirectMLNotAvailableError, DirectMLInitializationError)):
-                raise
-            raise DirectMLInitializationError(
-                f"Failed to initialize DirectML session: {exc}"
-            ) from exc
+            # 2. Strict streaming model checksum verification before loading
+            model_path = self._resolve_model_path()
+            expected_sha = (
+                self.config.isnet_model_sha256
+                if self.config.isnet_model_sha256
+                else self.config.isnet_expected_sha256
+            )
+            verify_model_file(
+                model_path=model_path,
+                expected_sha256=expected_sha,
+                expected_size=self.config.isnet_model_expected_size,
+            )
+
+            # 3. Mandatory DirectML Session Options (R3)
+            # Note: DirectML requires ORT_SEQUENTIAL and enable_mem_pattern=False.
+            dml_opts = ort.SessionOptions()
+            dml_opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+            dml_opts.enable_mem_pattern = False
+            dml_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            dml_opts.inter_op_num_threads = 1
+            dml_opts.intra_op_num_threads = 1  # GPU-bound; avoid spawning unnecessary CPU threads
+
+            device_id = self.config.directml_device_id
+            providers = ["DmlExecutionProvider"]
+            provider_options: list[dict[str, Any]] = [{"device_id": str(device_id)}]
+
+            logger.info(
+                "Initializing IS-Net DirectML InferenceSession from %s (device_id=%d, mem_pattern=False)",
+                model_path,
+                device_id,
+            )
+
+            try:
+                session = ort.InferenceSession(
+                    str(model_path),
+                    sess_options=dml_opts,
+                    providers=providers,
+                    provider_options=provider_options,
+                )
+                # 4. Verify that session actually bound to DirectML (no silent CPU fallback)
+                active = session.get_providers()
+                if "DmlExecutionProvider" not in active:
+                    raise DirectMLInitializationError(
+                        f"DirectML session was requested but DmlExecutionProvider is not active on session. "
+                        f"Active providers: {active}. Silent CPU fallback is rejected."
+                    )
+
+                self._session = session
+                self._input_name = session.get_inputs()[0].name
+                self._active_provider = "directml"
+            except Exception as exc:
+                # Safe resource cleanup on failed initialization
+                self.release()
+                if isinstance(exc, (DirectMLNotAvailableError, DirectMLInitializationError)):
+                    raise
+                raise DirectMLInitializationError(
+                    f"Failed to initialize DirectML session: {exc}"
+                ) from exc
 
     def _run_inference_sync(
         self,
@@ -190,6 +193,7 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
                     "Concurrent inference on DirectML session is strictly prohibited."
                 )
             self._is_inferring = True
+            self._inferring_thread_id = threading.get_ident()
 
             start_t = time.perf_counter()
             with Image.open(io.BytesIO(image_bytes)) as raw_img:
@@ -224,6 +228,7 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
             )
             return out_png_bytes, diag_meta
         finally:
+            self._inferring_thread_id = None
             self._is_inferring = False
             self._inference_lock.release()
 
@@ -243,11 +248,21 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
 
     def release(self) -> None:
         """Safely and idempotently deallocates DirectML session and GPU resources."""
-        if self._session is not None:
-            logger.info("Releasing IS-Net DirectML InferenceSession and GPU memory")
-            del self._session
-            self._session = None
-        self._input_name = None
-        self._active_provider = "released"
-        self._is_inferring = False
-        gc.collect()
+        current_thread = threading.get_ident()
+        # If release is invoked from an external thread while inference is active,
+        # wait for active inference to complete to prevent corrupting the DirectX 12 command queue.
+        if self._inferring_thread_id is not None and self._inferring_thread_id != current_thread:
+            acquired = self._inference_lock.acquire(timeout=5.0)
+            if acquired:
+                self._inference_lock.release()
+
+        with self._load_lock:
+            if self._session is not None:
+                logger.info("Releasing IS-Net DirectML InferenceSession and GPU memory")
+                del self._session
+                self._session = None
+            self._input_name = None
+            self._active_provider = "released"
+            self._is_inferring = False
+            self._inferring_thread_id = None
+            gc.collect()

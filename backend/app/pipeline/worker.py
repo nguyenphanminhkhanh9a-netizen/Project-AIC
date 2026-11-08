@@ -340,9 +340,11 @@ class PipelineWorker:
             logger.info("PipelineWorker started.")
 
     async def stop(self) -> None:
-        """Stops worker loop gracefully after current tasks complete."""
+        """Stops worker loop gracefully after current tasks complete and frees resources."""
         self._stop_event.set()
         if self._worker_task is not None:
             await self._worker_task
             self._worker_task = None
             logger.info("PipelineWorker stopped.")
+        if hasattr(self.bg_provider, "release"):
+            self.bg_provider.release()
