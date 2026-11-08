@@ -101,7 +101,7 @@ uv run python ../scripts/run_tier3_benchmark.py
 
 Mặc định, biến `use_mock_bg_provider: bool = True` được bật để giữ cho các bài kiểm tra tự động (CI) chạy siêu tốc không cần tải mô hình nặng.
 
-Khi muốn chạy với mô hình AI thật trong ứng dụng:
+Khi muốn chạy với mô hình AI thật trên CPU trong ứng dụng:
 - Thiết lập biến môi trường trong file `.env`:
   ```ini
   AIC_PIPELINE_USE_MOCK_BG_PROVIDER=false
@@ -113,10 +113,53 @@ Khi muốn chạy với mô hình AI thật trong ứng dụng:
   from app.pipeline.worker import PipelineWorker
   from app.pipeline.background import ISNetONNXProvider
 
-  config = PipelineConfig(use_mock_bg_provider=False)
+  config = PipelineConfig(use_mock_bg_provider=False, onnx_execution_provider="cpu")
   provider = ISNetONNXProvider(config=config)
   worker = PipelineWorker(config=config, bg_provider=provider)
   ```
+
+---
+
+## 6. Kích Hoạt Tăng Tốc Phần Cứng Bằng GPU Qua DirectML (GPU Acceleration)
+
+Nhằm tối ưu hóa hiệu năng và giảm độ trễ xử lý, hệ thống hỗ trợ tích hợp **DirectML Execution Provider** (`DmlExecutionProvider`) tận dụng GPU chuyên dụng (như NVIDIA GeForce RTX 4050) trên hệ điều hành Windows qua DirectX 12.
+
+### 6.1. Cài đặt Dependency DirectML
+
+Để bật hỗ trợ GPU DirectML, cài đặt gói mở rộng:
+
+```bash
+cd backend
+uv sync --extra directml
+# Hoặc cài trực tiếp bằng uv pip:
+# uv pip install onnxruntime-directml
+```
+
+### 6.2. Kích hoạt trong Cấu hình
+
+- **Qua biến môi trường:**
+  ```ini
+  AIC_PIPELINE_USE_MOCK_BG_PROVIDER=false
+  AIC_PIPELINE_ONNX_EXECUTION_PROVIDER=directml
+  AIC_PIPELINE_DIRECTML_DEVICE_ID=0
+  ```
+- **Qua mã nguồn Python:**
+  ```python
+  from app.pipeline.background import get_background_removal_provider
+  from app.pipeline.config import PipelineConfig
+
+  config = PipelineConfig(
+      use_mock_bg_provider=False,
+      onnx_execution_provider="directml",
+      directml_device_id=0,
+  )
+  provider = get_background_removal_provider(config=config)
+  ```
+
+### 6.3. Ràng buộc Vận hành Bắt buộc (Operational Constraints)
+- **Cấu hình Session:** Bắt buộc sử dụng `execution_mode = ORT_SEQUENTIAL` và `enable_mem_pattern = False`.
+- **Bảo vệ Đồng thời (Concurrency Guard):** Phiên làm việc DirectML không hỗ trợ gọi suy luận đa luồng đồng thời trên cùng một session. Nhà cung cấp đã tích hợp khóa bảo vệ tự động serialize các tác vụ bất đồng bộ và chặn cuộc gọi đồng thời trái phép.
+- **Dọn dẹp Tài nguyên:** Phương thức `release()` đảm bảo giải phóng toàn bộ bộ nhớ GPU và lệnh DirectX 12 mà không gây rò rỉ VRAM.
 
 ---
 

@@ -1,0 +1,240 @@
+"""DirectML Execution Provider for IS-Net Anime background removal on Windows GPUs.
+
+Provides GPU-accelerated inference via DirectX 12 DirectML Execution Provider,
+enforcing mandatory ORT_SEQUENTIAL execution, disabled memory pattern allocation,
+strict concurrency protection, pre-flight hardware/runtime verification,
+and leak-free session lifecycle management.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import gc
+import io
+import logging
+import threading
+import time
+from pathlib import Path
+from typing import Any
+
+import onnxruntime as ort  # type: ignore[import-not-found,import-untyped]
+from PIL import Image
+
+from app.domain.pipeline import BackgroundRemovalProvider
+from app.pipeline.background.image_ops import (
+    letterbox_preprocess,
+    postprocess_mask,
+)
+from app.pipeline.config import PipelineConfig, pipeline_config
+from app.pipeline.security.model_verifier import verify_model_file
+
+logger = logging.getLogger(__name__)
+
+
+class DirectMLError(RuntimeError):
+    """Base exception for DirectML execution provider errors."""
+
+
+class DirectMLNotAvailableError(DirectMLError):
+    """Raised when DirectML execution provider is requested but not available in runtime."""
+
+
+class DirectMLInitializationError(DirectMLError):
+    """Raised when DirectML session initialization or device allocation fails."""
+
+
+class DirectMLConcurrencyError(DirectMLError):
+    """Raised when concurrent inference is attempted on a DirectML session."""
+
+
+class ISNetDirectMLProvider(BackgroundRemovalProvider):
+    """GPU-accelerated DirectML provider for IS-Net Anime matting via ONNX Runtime."""
+
+    def __init__(self, config: PipelineConfig | None = None) -> None:
+        self.config = config if config is not None else pipeline_config
+        self._session: ort.InferenceSession | None = None
+        self._async_lock = asyncio.Lock()
+        self._inference_lock = threading.Lock()
+        self._is_inferring: bool = False
+        self._active_provider: str = "uninitialized"
+        self._input_name: str | None = None
+
+    @property
+    def model_name(self) -> str:
+        return "isnet_anime"
+
+    @property
+    def execution_provider(self) -> str:
+        return self._active_provider
+
+    def _resolve_model_path(self) -> Path:
+        """Resolves model path using priority hierarchy matching CPU provider."""
+        configured_path = Path(self.config.isnet_anime_model_path)
+        default_path = Path.home() / ".cache" / "project_aic" / "models" / "isnetis.onnx"
+
+        if configured_path != default_path:
+            return configured_path
+
+        if configured_path.is_file():
+            return configured_path
+
+        local_candidates = [
+            Path("data/models/isnetis.onnx"),
+            Path("data/models/isnet-anime.onnx"),
+        ]
+        for candidate in local_candidates:
+            if candidate.is_file():
+                return candidate
+
+        return configured_path
+
+    def _load_session_sync(self) -> None:
+        """Performs pre-flight checks, verifies model integrity, and creates DirectML session."""
+        # 1. Pre-flight check: Verify DirectML execution provider is available in runtime
+        available_providers = ort.get_available_providers()
+        if "DmlExecutionProvider" not in available_providers:
+            raise DirectMLNotAvailableError(
+                f"DirectML Execution Provider is not available in the current ONNX Runtime installation. "
+                f"Available providers: {available_providers}. "
+                f"Ensure 'onnxruntime-directml' is installed and running on a compatible Windows DirectX 12 environment."
+            )
+
+        # 2. Strict streaming model checksum verification before loading
+        model_path = self._resolve_model_path()
+        expected_sha = (
+            self.config.isnet_model_sha256
+            if self.config.isnet_model_sha256
+            else self.config.isnet_expected_sha256
+        )
+        verify_model_file(
+            model_path=model_path,
+            expected_sha256=expected_sha,
+            expected_size=self.config.isnet_model_expected_size,
+        )
+
+        # 3. Mandatory DirectML Session Options (R3)
+        # Note: DirectML requires ORT_SEQUENTIAL and enable_mem_pattern=False.
+        dml_opts = ort.SessionOptions()
+        dml_opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+        dml_opts.enable_mem_pattern = False
+        dml_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        dml_opts.inter_op_num_threads = 1
+        dml_opts.intra_op_num_threads = 1  # GPU-bound; avoid spawning unnecessary CPU threads
+
+        device_id = self.config.directml_device_id
+        providers = ["DmlExecutionProvider"]
+        provider_options: list[dict[str, Any]] = [{"device_id": str(device_id)}]
+
+        logger.info(
+            "Initializing IS-Net DirectML InferenceSession from %s (device_id=%d, mem_pattern=False)",
+            model_path,
+            device_id,
+        )
+
+        try:
+            session = ort.InferenceSession(
+                str(model_path),
+                sess_options=dml_opts,
+                providers=providers,
+                provider_options=provider_options,
+            )
+            # 4. Verify that session actually bound to DirectML (no silent CPU fallback)
+            active = session.get_providers()
+            if "DmlExecutionProvider" not in active:
+                raise DirectMLInitializationError(
+                    f"DirectML session was requested but DmlExecutionProvider is not active on session. "
+                    f"Active providers: {active}. Silent CPU fallback is rejected."
+                )
+
+            self._session = session
+            self._input_name = session.get_inputs()[0].name
+            self._active_provider = "directml"
+        except Exception as exc:
+            # Safe resource cleanup on failed initialization
+            self.release()
+            if isinstance(exc, (DirectMLNotAvailableError, DirectMLInitializationError)):
+                raise
+            raise DirectMLInitializationError(
+                f"Failed to initialize DirectML session: {exc}"
+            ) from exc
+
+    def _run_inference_sync(
+        self,
+        image_bytes: bytes,
+        **kwargs: Any,
+    ) -> tuple[bytes, dict[str, Any]]:
+        """Synchronously executes preprocessing, DirectML GPU inference, and postprocessing.
+
+        Enforces strict mutual exclusion across threads to protect the DirectX 12 session.
+        """
+        if self._session is None or self._input_name is None:
+            raise RuntimeError("IS-Net DirectML session is not loaded")
+
+        # Concurrency guard: reject concurrent execution on the same DirectML session
+        if self.config.directml_strict_concurrency:
+            acquired = self._inference_lock.acquire(blocking=False)
+            if not acquired:
+                raise DirectMLConcurrencyError(
+                    "Concurrent inference on DirectML session is strictly prohibited. "
+                    "Ensure requests are serialized or use worker_concurrency=1."
+                )
+        else:
+            self._inference_lock.acquire(blocking=True)
+
+        try:
+            if self._is_inferring:
+                raise DirectMLConcurrencyError(
+                    "Concurrent inference on DirectML session is strictly prohibited."
+                )
+            self._is_inferring = True
+
+            start_t = time.perf_counter()
+            with Image.open(io.BytesIO(image_bytes)) as raw_img:
+                input_tensor, letterbox_meta = letterbox_preprocess(raw_img)
+
+                # DirectML GPU inference
+                outputs = self._session.run(None, {self._input_name: input_tensor})
+                raw_mask = outputs[0]
+
+                out_png_bytes, diag_meta = postprocess_mask(
+                    raw_mask=raw_mask,
+                    orig_img=raw_img,
+                    meta=letterbox_meta,
+                )
+
+            elapsed_ms = (time.perf_counter() - start_t) * 1000.0
+            diag_meta.update(
+                {
+                    "model_name": self.model_name,
+                    "execution_provider": self.execution_provider,
+                    "latency_ms": elapsed_ms,
+                }
+            )
+            return out_png_bytes, diag_meta
+        finally:
+            self._is_inferring = False
+            self._inference_lock.release()
+
+    async def remove_background(
+        self,
+        image_bytes: bytes,
+        **kwargs: Any,
+    ) -> tuple[bytes, dict[str, Any]]:
+        """Processes raw image bytes and yields transparent RGBA PNG bytes.
+
+        Enforces sequential asyncio serialization across calls on this DirectML session.
+        """
+        async with self._async_lock:
+            if self._session is None:
+                self._load_session_sync()
+            return await asyncio.to_thread(self._run_inference_sync, image_bytes, **kwargs)
+
+    def release(self) -> None:
+        """Safely and idempotently deallocates DirectML session and GPU resources."""
+        if self._session is not None:
+            logger.info("Releasing IS-Net DirectML InferenceSession and GPU memory")
+            del self._session
+            self._session = None
+        self._active_provider = "released"
+        self._is_inferring = False
+        gc.collect()
