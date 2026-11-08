@@ -143,6 +143,7 @@ class PipelineConfig(BaseSettings):
     )
     directml_device_id: int = Field(
         default=0,
+        ge=0,
         description="DirectML GPU adapter index (0-indexed)",
     )
     directml_strict_concurrency: bool = Field(

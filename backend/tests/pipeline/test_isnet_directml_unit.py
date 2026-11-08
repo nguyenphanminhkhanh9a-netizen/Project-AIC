@@ -426,3 +426,131 @@ def test_directml_model_checksum_failure_cleanup(tmp_path: Path) -> None:
     assert provider._session is None
     assert provider.execution_provider == "uninitialized"
 
+
+def test_directml_load_session_sync_idempotent(tmp_path: Path) -> None:
+    """Verifies that calling _load_session_sync when session is already loaded is a no-op."""
+    dummy_model = tmp_path / "dummy.onnx"
+    dummy_model.write_bytes(b"x" * 100)
+
+    config = PipelineConfig(
+        isnet_anime_model_path=dummy_model,
+        isnet_model_sha256="",
+        isnet_model_expected_size=100,
+    )
+    provider = ISNetDirectMLProvider(config=config)
+
+    mock_session = MagicMock()
+    mock_session.get_providers.return_value = ["DmlExecutionProvider"]
+    mock_session.get_inputs.return_value = [MagicMock(name="input_tensor")]
+
+    with (
+        patch("onnxruntime.get_available_providers", return_value=["DmlExecutionProvider"]),
+        patch(
+            "app.pipeline.background.isnet_directml_provider.verify_model_file",
+            return_value="dummy_sha",
+        ),
+        patch("onnxruntime.InferenceSession", return_value=mock_session) as mock_init,
+    ):
+        provider._load_session_sync()
+        assert mock_init.call_count == 1
+
+        # Second call must be a no-op and not re-initialize InferenceSession
+        provider._load_session_sync()
+        assert mock_init.call_count == 1
+        assert provider._session is mock_session
+
+
+def test_directml_runtime_inference_error_releases_session() -> None:
+    """Verifies that a GPU or ONNX Runtime crash during session.run deallocates session cleanly."""
+    provider = ISNetDirectMLProvider()
+    mock_session = MagicMock()
+    mock_session.run.side_effect = RuntimeError("DirectX 12 Device Lost: DXGI_ERROR_DEVICE_REMOVED")
+    provider._session = mock_session
+    provider._input_name = "test_input"
+    provider._active_provider = "directml"
+
+    img_bytes = _create_dummy_png(64, 64)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        provider._run_inference_sync(img_bytes)
+
+    assert "DXGI_ERROR_DEVICE_REMOVED" in str(exc_info.value)
+    # Corrupted session must be cleanly deallocated and marked released
+    assert provider._session is None
+    assert provider._input_name is None
+    assert provider.execution_provider == "released"
+    assert not provider._is_inferring
+    assert not provider._inference_lock.locked()
+
+
+def test_directml_release_clears_input_name() -> None:
+    """Verifies that calling release() explicitly clears _input_name to prevent stale state."""
+    provider = ISNetDirectMLProvider()
+    provider._session = MagicMock()
+    provider._input_name = "cached_input_tensor"
+    provider._active_provider = "directml"
+
+    provider.release()
+    assert provider._input_name is None
+    assert provider._session is None
+    assert provider.execution_provider == "released"
+
+
+def test_directml_concurrency_blocking_mode() -> None:
+    """Verifies that when directml_strict_concurrency=False, threads serialize sequentially without error."""
+    config = PipelineConfig(directml_strict_concurrency=False)
+    provider = ISNetDirectMLProvider(config=config)
+    mock_session = MagicMock()
+    provider._session = mock_session
+    provider._input_name = "test_input"
+    provider._active_provider = "directml"
+
+    execution_order: list[str] = []
+    lock = threading.Lock()
+
+    def mock_run(*args: Any, **kwargs: Any) -> list[np.ndarray]:
+        import time
+
+        with lock:
+            execution_order.append("start")
+        time.sleep(0.03)
+        with lock:
+            execution_order.append("end")
+        return [np.zeros((1, 1, 1024, 1024), dtype=np.float32)]
+
+    mock_session.run = mock_run
+    img_bytes = _create_dummy_png(64, 64)
+
+    t1 = threading.Thread(target=lambda: provider._run_inference_sync(img_bytes))
+    t2 = threading.Thread(target=lambda: provider._run_inference_sync(img_bytes))
+
+    t1.start()
+    t2.start()
+    t1.join(timeout=2.0)
+    t2.join(timeout=2.0)
+
+    # Both threads succeeded sequentially: start -> end -> start -> end
+    assert execution_order == ["start", "end", "start", "end"]
+
+
+def test_pipeline_config_negative_device_id_rejected() -> None:
+    """Verifies that setting a negative directml_device_id is rejected by Pydantic validation."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        PipelineConfig(directml_device_id=-1)
+
+
+def test_pipeline_worker_wires_directml_provider() -> None:
+    """Verifies that PipelineWorker automatically resolves ISNetDirectMLProvider when configured."""
+    from app.pipeline.worker import PipelineWorker
+
+    cfg = PipelineConfig(use_mock_bg_provider=False, onnx_execution_provider="directml")
+    worker = PipelineWorker(config=cfg)
+    assert isinstance(worker.bg_provider, ISNetDirectMLProvider)
+
+    cfg_cpu = PipelineConfig(use_mock_bg_provider=False, onnx_execution_provider="cpu")
+    worker_cpu = PipelineWorker(config=cfg_cpu)
+    assert isinstance(worker_cpu.bg_provider, ISNetONNXProvider)
+
+

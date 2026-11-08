@@ -90,6 +90,9 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
 
     def _load_session_sync(self) -> None:
         """Performs pre-flight checks, verifies model integrity, and creates DirectML session."""
+        if self._session is not None:
+            return
+
         # 1. Pre-flight check: Verify DirectML execution provider is available in runtime
         available_providers = ort.get_available_providers()
         if "DmlExecutionProvider" not in available_providers:
@@ -192,8 +195,17 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
             with Image.open(io.BytesIO(image_bytes)) as raw_img:
                 input_tensor, letterbox_meta = letterbox_preprocess(raw_img)
 
-                # DirectML GPU inference
-                outputs = self._session.run(None, {self._input_name: input_tensor})
+                try:
+                    # DirectML GPU inference
+                    outputs = self._session.run(None, {self._input_name: input_tensor})
+                except Exception as run_exc:
+                    logger.error(
+                        "DirectML inference execution failed: %s; releasing session",
+                        run_exc,
+                    )
+                    self.release()
+                    raise
+
                 raw_mask = outputs[0]
 
                 out_png_bytes, diag_meta = postprocess_mask(
@@ -235,6 +247,7 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
             logger.info("Releasing IS-Net DirectML InferenceSession and GPU memory")
             del self._session
             self._session = None
+        self._input_name = None
         self._active_provider = "released"
         self._is_inferring = False
         gc.collect()

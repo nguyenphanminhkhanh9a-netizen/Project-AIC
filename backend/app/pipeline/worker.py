@@ -21,7 +21,7 @@ from app.domain.pipeline import (
     PipelineStage,
     PipelineTask,
 )
-from app.pipeline.background.mock_provider import MockBackgroundRemovalProvider
+from app.pipeline.background import get_background_removal_provider
 from app.pipeline.config import PipelineConfig, pipeline_config
 from app.pipeline.deduplication.engine import MultiScaleDeduplicator
 from app.pipeline.processing.drift_analyzer import DriftVerificationEngine
@@ -56,7 +56,9 @@ class PipelineWorker:
         )
         self.quality_gate = quality_gate if quality_gate is not None else CQSQualityGate(self.config)
         self.bg_provider = (
-            bg_provider if bg_provider is not None else MockBackgroundRemovalProvider()
+            bg_provider
+            if bg_provider is not None
+            else get_background_removal_provider(self.config)
         )
         self.normalizer = normalizer if normalizer is not None else SpriteNormalizer(
             canvas_width=self.config.target_canvas_width,
