@@ -334,3 +334,95 @@ def test_factory_provider_selection() -> None:
     with pytest.raises(ValueError) as exc_info:
         get_background_removal_provider(cfg_invalid)
     assert "Unsupported execution provider 'tensorrt'" in str(exc_info.value)
+
+
+def test_directml_run_inference_without_load_raises() -> None:
+    """Verifies that calling _run_inference_sync on an unloaded session raises RuntimeError."""
+    provider = ISNetDirectMLProvider()
+    assert provider._session is None
+    with pytest.raises(RuntimeError) as exc_info:
+        provider._run_inference_sync(b"dummy")
+    assert "IS-Net DirectML session is not loaded" in str(exc_info.value)
+
+
+def test_directml_invalid_device_id_rejection(tmp_path: Path) -> None:
+    """Verifies that an out-of-bounds directml_device_id rejects fallback and raises DirectMLInitializationError."""
+    dummy_model = tmp_path / "dummy.onnx"
+    dummy_model.write_bytes(b"x" * 100)
+
+    config = PipelineConfig(
+        isnet_anime_model_path=dummy_model,
+        isnet_model_sha256="",
+        isnet_model_expected_size=100,
+        directml_device_id=999,
+    )
+    provider = ISNetDirectMLProvider(config=config)
+
+    # When device_id is invalid, ONNX Runtime falls back to CPUExecutionProvider
+    mock_session = MagicMock()
+    mock_session.get_providers.return_value = ["CPUExecutionProvider"]
+
+    with (
+        patch("onnxruntime.get_available_providers", return_value=["DmlExecutionProvider", "CPUExecutionProvider"]),
+        patch("app.pipeline.background.isnet_directml_provider.verify_model_file", return_value="dummy_sha"),
+        patch("onnxruntime.InferenceSession", return_value=mock_session),
+        pytest.raises(DirectMLInitializationError) as exc_info,
+    ):
+        provider._load_session_sync()
+
+    assert "Silent CPU fallback is rejected" in str(exc_info.value)
+    assert provider._session is None
+    assert provider.execution_provider == "released"
+
+
+@pytest.mark.asyncio
+async def test_directml_corrupted_input_releases_locks() -> None:
+    """Verifies that corrupted image bytes fail gracefully while releasing all locks for subsequent calls."""
+    provider = ISNetDirectMLProvider()
+    mock_session = MagicMock()
+    mock_session.get_inputs.return_value = [MagicMock(name="input_tensor")]
+    provider._session = mock_session
+    provider._input_name = "input_tensor"
+    provider._active_provider = "directml"
+
+    from PIL import UnidentifiedImageError
+
+    # Call with corrupted bytes: PIL cannot identify
+    with pytest.raises(UnidentifiedImageError):
+        await provider.remove_background(b"corrupted bytes not an image")
+
+    # Locks must be completely free
+    assert not provider._async_lock.locked()
+    assert provider._inference_lock.acquire(blocking=False)
+    provider._inference_lock.release()
+    assert not provider._is_inferring
+
+
+def test_directml_model_checksum_failure_cleanup(tmp_path: Path) -> None:
+    """Verifies that model integrity or checksum failure leaves provider clean without leaking resources."""
+    from app.pipeline.security.model_verifier import ModelIntegrityError
+
+    dummy_model = tmp_path / "tampered.onnx"
+    dummy_model.write_bytes(b"x" * 50)
+
+    config = PipelineConfig(
+        isnet_anime_model_path=dummy_model,
+        isnet_model_sha256="expected_valid_sha",
+        isnet_model_expected_size=100,
+    )
+    provider = ISNetDirectMLProvider(config=config)
+
+    with (
+        patch("onnxruntime.get_available_providers", return_value=["DmlExecutionProvider"]),
+        patch(
+            "app.pipeline.background.isnet_directml_provider.verify_model_file",
+            side_effect=ModelIntegrityError("Checksum mismatch"),
+        ),
+        pytest.raises(ModelIntegrityError) as exc_info,
+    ):
+        provider._load_session_sync()
+
+    assert "Checksum mismatch" in str(exc_info.value)
+    assert provider._session is None
+    assert provider.execution_provider == "uninitialized"
+
