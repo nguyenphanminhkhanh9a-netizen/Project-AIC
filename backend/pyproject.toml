@@ -12,7 +12,6 @@ dependencies = [
     "aiosqlite>=0.20.0",
     "pillow>=13.0.0",
     "numpy>=1.26.0",
-    "onnxruntime>=1.19.0",
 ]
 
 [project.optional-dependencies]
@@ -23,8 +22,39 @@ dev = [
     "ruff>=0.6.0",
     "mypy>=1.11.0",
 ]
+cpu = [
+    "onnxruntime>=1.19.0",
+]
 directml = [
     "onnxruntime-directml>=1.19.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.27.0",
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+]
+cpu = [
+    "onnxruntime>=1.19.0",
+]
+directml = [
+    "onnxruntime-directml>=1.19.0",
+]
+
+[tool.uv]
+default-groups = ["dev", "cpu"]
+conflicts = [
+    [
+        { extra = "cpu" },
+        { extra = "directml" },
+    ],
+    [
+        { group = "cpu" },
+        { group = "directml" },
+    ],
 ]
 
 [build-system]

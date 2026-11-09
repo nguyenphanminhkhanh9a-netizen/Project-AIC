@@ -141,10 +141,10 @@ class PipelineConfig(BaseSettings):
         default="cpu",
         description="ONNX Runtime execution provider: 'cpu' or 'directml'",
     )
-    directml_device_id: int = Field(
-        default=0,
+    directml_device_id: int | None = Field(
+        default=None,
         ge=0,
-        description="DirectML GPU adapter index (0-indexed)",
+        description="DirectML GPU adapter index (0-indexed). Defaults to None for automatic discrete GPU selection.",
     )
     directml_strict_concurrency: bool = Field(
         default=True,

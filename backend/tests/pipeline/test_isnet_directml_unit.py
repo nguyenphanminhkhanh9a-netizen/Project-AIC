@@ -363,7 +363,30 @@ def test_directml_invalid_device_id_rejection(tmp_path: Path) -> None:
     )
     provider = ISNetDirectMLProvider(config=config)
 
-    # When device_id is invalid, ONNX Runtime falls back to CPUExecutionProvider
+    with (
+        patch("onnxruntime.get_available_providers", return_value=["DmlExecutionProvider", "CPUExecutionProvider"]),
+        patch("app.pipeline.background.isnet_directml_provider.verify_model_file", return_value="dummy_sha"),
+        pytest.raises(DirectMLInitializationError) as exc_info,
+    ):
+        provider._load_session_sync()
+
+    assert "does not exist" in str(exc_info.value)
+    assert provider._session is None
+    assert provider.execution_provider == "released"
+
+
+def test_directml_silent_cpu_fallback_rejected(tmp_path: Path) -> None:
+    """Verifies that if ONNX Runtime returns only CPUExecutionProvider, DirectMLInitializationError is raised."""
+    dummy_model = tmp_path / "dummy.onnx"
+    dummy_model.write_bytes(b"x" * 100)
+
+    config = PipelineConfig(
+        isnet_anime_model_path=dummy_model,
+        isnet_model_sha256="",
+        isnet_model_expected_size=100,
+    )
+    provider = ISNetDirectMLProvider(config=config)
+
     mock_session = MagicMock()
     mock_session.get_providers.return_value = ["CPUExecutionProvider"]
 
@@ -892,6 +915,271 @@ async def test_pipeline_worker_stop_releases_bg_provider() -> None:
     await worker.stop()
 
     assert mock_provider.release.call_count == 1
+
+
+def test_directml_release_error_path_ab_ba_deadlock_eliminated() -> None:
+    """Verifies that when session.run raises an error while an external release()
+    is waiting for _inference_lock, no AB-BA deadlock occurs. Both threads terminate safely."""
+    provider = ISNetDirectMLProvider()
+    mock_session = MagicMock()
+    mock_session.get_inputs.return_value = [MagicMock(name="input_tensor")]
+    provider._session = mock_session
+    provider._input_name = "input_tensor"
+    provider._active_provider = "directml"
+
+    inference_started = threading.Event()
+    rel_waiting_for_inference = threading.Event()
+
+    class LockObserver:
+        def __init__(self, real_lock: threading.Lock) -> None:
+            self._real = real_lock
+
+        def acquire(self, *args: Any, **kwargs: Any) -> bool:
+            if threading.get_ident() != provider._inferring_thread_id:
+                rel_waiting_for_inference.set()
+            return self._real.acquire(*args, **kwargs)
+
+        def release(self) -> None:
+            self._real.release()
+
+        def locked(self) -> bool:
+            return self._real.locked()
+
+    provider._inference_lock = LockObserver(provider._inference_lock)  # type: ignore[assignment]
+
+    def mock_run_with_gpu_crash(*args: Any, **kwargs: Any) -> list[np.ndarray]:
+        inference_started.set()
+        assert rel_waiting_for_inference.wait(timeout=2.0), "Release thread failed to enter wait state"
+        time.sleep(0.01)
+        raise RuntimeError("DirectX 12 Device Lost: DXGI_ERROR_DEVICE_REMOVED")
+
+    mock_session.run = mock_run_with_gpu_crash
+    img_bytes = _create_dummy_png(64, 64)
+
+    inf_exception: list[Exception] = []
+
+    def inference_worker() -> None:
+        try:
+            provider._run_inference_sync(img_bytes)
+        except (RuntimeError, ValueError, DirectMLError) as exc:
+            inf_exception.append(exc)
+
+    t_inf = threading.Thread(target=inference_worker)
+    t_inf.start()
+    assert inference_started.wait(timeout=2.0), "Inference thread did not start"
+
+    rel_exception: list[Exception] = []
+
+    def release_worker() -> None:
+        try:
+            provider.release(timeout=2.0)
+        except (DirectMLTimeoutError, RuntimeError) as exc:
+            rel_exception.append(exc)
+
+    t_rel = threading.Thread(target=release_worker)
+    start_rel = time.perf_counter()
+    t_rel.start()
+
+    t_inf.join(timeout=3.0)
+    t_rel.join(timeout=3.0)
+    rel_duration = time.perf_counter() - start_rel
+
+    assert not t_inf.is_alive(), "Inference thread deadlocked"
+    assert not t_rel.is_alive(), "Release thread deadlocked"
+    assert len(inf_exception) == 1
+    assert "DXGI_ERROR_DEVICE_REMOVED" in str(inf_exception[0])
+    assert len(rel_exception) == 0, f"Release failed with unexpected error: {rel_exception}"
+    assert provider._session is None
+    assert provider.execution_provider == "released"
+    assert rel_duration < 1.0, f"Release took too long ({rel_duration:.2f}s), possible lock contention"
+
+
+def test_directml_self_release_deferred_lifecycle() -> None:
+    """Verifies that calling release() from within the inference thread defers destruction
+    until the critical section exits, without crashing or destroying active session prematurely."""
+    provider = ISNetDirectMLProvider()
+    mock_session = MagicMock()
+    mock_session.get_inputs.return_value = [MagicMock(name="input_tensor")]
+    provider._session = mock_session
+    provider._input_name = "input_tensor"
+    provider._active_provider = "directml"
+
+    session_state_during_inference: list[Any] = []
+
+    def mock_run_invoking_self_release(*args: Any, **kwargs: Any) -> list[np.ndarray]:
+        provider.release(timeout=1.0)
+        session_state_during_inference.append(provider._session)
+        return [np.zeros((1, 1, 1024, 1024), dtype=np.float32)]
+
+    mock_session.run = mock_run_invoking_self_release
+    img_bytes = _create_dummy_png(64, 64)
+
+    out_bytes, _meta = provider._run_inference_sync(img_bytes)
+
+    assert len(out_bytes) > 0
+    assert len(session_state_during_inference) == 1
+    assert session_state_during_inference[0] is mock_session, "Session was prematurely destroyed during active inference"
+    assert provider._session is None, "Session was not destroyed after critical section exited"
+    assert provider.execution_provider == "released"
+    assert not provider._inference_lock.locked()
+
+
+def test_directml_concurrent_release_during_preprocessing_failure() -> None:
+    """Verifies that if preprocessing fails while external thread calls release(),
+    both threads complete safely without deadlock or hanging."""
+    provider = ISNetDirectMLProvider()
+    mock_session = MagicMock()
+    mock_session.get_inputs.return_value = [MagicMock(name="input_tensor")]
+    provider._session = mock_session
+    provider._input_name = "input_tensor"
+    provider._active_provider = "directml"
+
+    prep_started = threading.Event()
+    rel_waiting = threading.Event()
+
+    class LockObserver:
+        def __init__(self, real_lock: threading.Lock) -> None:
+            self._real = real_lock
+
+        def acquire(self, *args: Any, **kwargs: Any) -> bool:
+            if threading.get_ident() != provider._inferring_thread_id:
+                rel_waiting.set()
+            return self._real.acquire(*args, **kwargs)
+
+        def release(self) -> None:
+            self._real.release()
+
+        def locked(self) -> bool:
+            return self._real.locked()
+
+    provider._inference_lock = LockObserver(provider._inference_lock)  # type: ignore[assignment]
+
+    def mock_broken_preprocess(raw_img: Any) -> Any:
+        prep_started.set()
+        assert rel_waiting.wait(timeout=2.0)
+        time.sleep(0.01)
+        raise ValueError("Corrupted image dimensions in preprocessing")
+
+    img_bytes = _create_dummy_png(64, 64)
+    inf_err: list[Exception] = []
+
+    def inf_worker() -> None:
+        try:
+            with patch(
+                "app.pipeline.background.isnet_directml_provider.letterbox_preprocess",
+                side_effect=mock_broken_preprocess,
+            ):
+                provider._run_inference_sync(img_bytes)
+        except (ValueError, RuntimeError, DirectMLError) as exc:
+            inf_err.append(exc)
+
+    t_inf = threading.Thread(target=inf_worker)
+    t_inf.start()
+    assert prep_started.wait(timeout=2.0)
+
+    rel_err: list[Exception] = []
+
+    def rel_worker() -> None:
+        try:
+            provider.release(timeout=2.0)
+        except (DirectMLTimeoutError, RuntimeError) as exc:
+            rel_err.append(exc)
+
+    t_rel = threading.Thread(target=rel_worker)
+    start_t = time.perf_counter()
+    t_rel.start()
+
+    t_inf.join(timeout=3.0)
+    t_rel.join(timeout=3.0)
+    duration = time.perf_counter() - start_t
+
+    assert not t_inf.is_alive()
+    assert not t_rel.is_alive()
+    assert len(inf_err) == 1 and isinstance(inf_err[0], ValueError)
+    assert len(rel_err) == 0
+    assert provider._session is None
+    assert provider.execution_provider == "released"
+    assert duration < 1.0
+
+
+def test_directml_concurrent_release_during_postprocessing_failure() -> None:
+    """Verifies that if postprocessing fails while external thread calls release(),
+    both threads complete cleanly without hanging."""
+    provider = ISNetDirectMLProvider()
+    mock_session = MagicMock()
+    mock_session.get_inputs.return_value = [MagicMock(name="input_tensor")]
+    mock_session.run.return_value = [np.zeros((1, 1, 1024, 1024), dtype=np.float32)]
+    provider._session = mock_session
+    provider._input_name = "input_tensor"
+    provider._active_provider = "directml"
+
+    post_started = threading.Event()
+    rel_waiting = threading.Event()
+
+    class LockObserver:
+        def __init__(self, real_lock: threading.Lock) -> None:
+            self._real = real_lock
+
+        def acquire(self, *args: Any, **kwargs: Any) -> bool:
+            if threading.get_ident() != provider._inferring_thread_id:
+                rel_waiting.set()
+            return self._real.acquire(*args, **kwargs)
+
+        def release(self) -> None:
+            self._real.release()
+
+        def locked(self) -> bool:
+            return self._real.locked()
+
+    provider._inference_lock = LockObserver(provider._inference_lock)  # type: ignore[assignment]
+
+    def mock_broken_postprocess(*args: Any, **kwargs: Any) -> Any:
+        post_started.set()
+        assert rel_waiting.wait(timeout=2.0)
+        time.sleep(0.01)
+        raise RuntimeError("Postprocess mask alpha composition failure")
+
+    img_bytes = _create_dummy_png(64, 64)
+    inf_err: list[Exception] = []
+
+    def inf_worker() -> None:
+        try:
+            with patch(
+                "app.pipeline.background.isnet_directml_provider.postprocess_mask",
+                side_effect=mock_broken_postprocess,
+            ):
+                provider._run_inference_sync(img_bytes)
+        except (RuntimeError, ValueError, DirectMLError) as exc:
+            inf_err.append(exc)
+
+    t_inf = threading.Thread(target=inf_worker)
+    t_inf.start()
+    assert post_started.wait(timeout=2.0)
+
+    rel_err: list[Exception] = []
+
+    def rel_worker() -> None:
+        try:
+            provider.release(timeout=2.0)
+        except (DirectMLTimeoutError, RuntimeError) as exc:
+            rel_err.append(exc)
+
+    t_rel = threading.Thread(target=rel_worker)
+    start_t = time.perf_counter()
+    t_rel.start()
+
+    t_inf.join(timeout=3.0)
+    t_rel.join(timeout=3.0)
+    duration = time.perf_counter() - start_t
+
+    assert not t_inf.is_alive()
+    assert not t_rel.is_alive()
+    assert len(inf_err) == 1 and "Postprocess mask alpha composition failure" in str(inf_err[0])
+    assert len(rel_err) == 0
+    assert provider._session is None
+    assert provider.execution_provider == "released"
+    assert duration < 1.0
+
 
 
 

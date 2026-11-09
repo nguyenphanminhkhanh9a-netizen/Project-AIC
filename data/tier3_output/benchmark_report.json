@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-08T11:35:25Z",
+  "timestamp": "2026-11-09T06:27:25Z",
   "model_path": "C:\\Users\\PC KHANH\\.cache\\project_aic\\models\\isnetis.onnx",
   "model_sha256": "f15622d853e8260172812b657053460e20806f04b9e05147d49af7bed31a6e99",
   "directml_available": true,
@@ -21,20 +21,20 @@
     "no_silent_fallback_verified": true
   },
   "session_initialization_ms": {
-    "cpu_init_ms": 382.36,
-    "dml_init_ms": 2235.37
+    "cpu_init_ms": 354.28,
+    "dml_init_ms": 1179.82
   },
   "benchmark_protocol": {
     "warmup_iterations_per_image": 2,
     "official_iterations_per_image": 10
   },
   "overall_summary": {
-    "average_cpu_e2e_latency_ms": 1447.46,
-    "average_dml_e2e_latency_ms": 259.4,
-    "average_e2e_speedup_factor": 5.58,
-    "average_cpu_inference_latency_ms": 1235.81,
-    "average_dml_inference_latency_ms": 80.31,
-    "average_inference_speedup_factor": 15.39
+    "average_cpu_e2e_latency_ms": 1188.53,
+    "average_dml_e2e_latency_ms": 250.63,
+    "average_e2e_speedup_factor": 4.74,
+    "average_cpu_inference_latency_ms": 1006.02,
+    "average_dml_inference_latency_ms": 78.14,
+    "average_inference_speedup_factor": 12.87
   },
   "comparisons": [
     {
@@ -44,68 +44,68 @@
         848,
         1264
       ],
-      "cpu_latency_ms": 1356.32,
-      "dml_latency_ms": 225.84,
-      "speedup_factor": 6.01,
-      "inference_speedup_factor": 19.39,
+      "cpu_latency_ms": 1183.37,
+      "dml_latency_ms": 208.63,
+      "speedup_factor": 5.67,
+      "inference_speedup_factor": 19.55,
       "cpu_stage_latencies": {
         "e2e": {
-          "mean": 1356.32,
-          "median": 1342.12,
-          "std": 40.49,
-          "min": 1290.8,
-          "max": 1421.67
+          "mean": 1183.37,
+          "median": 1181.49,
+          "std": 52.95,
+          "min": 1085.05,
+          "max": 1272.26
         },
         "preprocess": {
-          "mean": 42.27,
-          "median": 41.5,
-          "std": 2.99,
-          "min": 37.42,
-          "max": 47.88
+          "mean": 39.25,
+          "median": 38.54,
+          "std": 2.45,
+          "min": 36.24,
+          "max": 43.0
         },
         "inference": {
-          "mean": 1178.35,
-          "median": 1168.03,
-          "std": 38.17,
-          "min": 1115.37,
-          "max": 1235.87
+          "mean": 1018.44,
+          "median": 1013.84,
+          "std": 52.59,
+          "min": 926.04,
+          "max": 1112.45
         },
         "postprocess": {
-          "mean": 135.7,
-          "median": 134.02,
-          "std": 5.62,
-          "min": 129.49,
-          "max": 145.28
+          "mean": 125.68,
+          "median": 127.1,
+          "std": 2.96,
+          "min": 121.78,
+          "max": 128.71
         }
       },
       "dml_stage_latencies": {
         "e2e": {
-          "mean": 225.84,
-          "median": 229.56,
-          "std": 7.36,
-          "min": 212.74,
-          "max": 233.76
+          "mean": 208.63,
+          "median": 205.0,
+          "std": 10.3,
+          "min": 198.58,
+          "max": 225.8
         },
         "preprocess": {
-          "mean": 39.79,
-          "median": 38.69,
-          "std": 4.8,
-          "min": 36.81,
-          "max": 53.16
+          "mean": 36.73,
+          "median": 36.78,
+          "std": 1.3,
+          "min": 34.15,
+          "max": 38.31
         },
         "inference": {
-          "mean": 60.76,
-          "median": 55.94,
-          "std": 8.42,
-          "min": 54.85,
-          "max": 74.29
+          "mean": 52.09,
+          "median": 46.36,
+          "std": 9.6,
+          "min": 45.68,
+          "max": 68.0
         },
         "postprocess": {
-          "mean": 125.3,
-          "median": 123.52,
-          "std": 5.68,
-          "min": 120.02,
-          "max": 135.13
+          "mean": 119.8,
+          "median": 119.11,
+          "std": 3.1,
+          "min": 114.85,
+          "max": 124.92
         }
       },
       "max_alpha_difference": 1,
@@ -121,68 +121,68 @@
         848,
         1264
       ],
-      "cpu_latency_ms": 1379.32,
-      "dml_latency_ms": 263.22,
-      "speedup_factor": 5.24,
-      "inference_speedup_factor": 13.87,
+      "cpu_latency_ms": 1194.48,
+      "dml_latency_ms": 255.39,
+      "speedup_factor": 4.68,
+      "inference_speedup_factor": 12.33,
       "cpu_stage_latencies": {
         "e2e": {
-          "mean": 1379.32,
-          "median": 1378.84,
-          "std": 55.29,
-          "min": 1283.92,
-          "max": 1478.83
+          "mean": 1194.48,
+          "median": 1193.14,
+          "std": 57.4,
+          "min": 1097.52,
+          "max": 1284.49
         },
         "preprocess": {
-          "mean": 53.25,
-          "median": 54.05,
-          "std": 3.47,
-          "min": 47.41,
-          "max": 57.9
+          "mean": 50.2,
+          "median": 47.61,
+          "std": 5.73,
+          "min": 46.23,
+          "max": 64.27
         },
         "inference": {
-          "mean": 1183.95,
-          "median": 1186.04,
-          "std": 52.71,
-          "min": 1091.21,
-          "max": 1281.83
+          "mean": 1015.15,
+          "median": 1020.97,
+          "std": 49.88,
+          "min": 926.55,
+          "max": 1085.34
         },
         "postprocess": {
-          "mean": 142.12,
-          "median": 138.9,
-          "std": 8.59,
-          "min": 133.38,
-          "max": 162.83
+          "mean": 129.13,
+          "median": 125.75,
+          "std": 7.13,
+          "min": 122.56,
+          "max": 146.44
         }
       },
       "dml_stage_latencies": {
         "e2e": {
-          "mean": 263.22,
-          "median": 262.13,
-          "std": 5.05,
-          "min": 256.56,
-          "max": 271.21
+          "mean": 255.39,
+          "median": 252.77,
+          "std": 8.07,
+          "min": 244.95,
+          "max": 274.62
         },
         "preprocess": {
-          "mean": 49.71,
-          "median": 49.57,
-          "std": 1.79,
-          "min": 47.24,
-          "max": 53.57
+          "mean": 48.29,
+          "median": 47.1,
+          "std": 2.94,
+          "min": 46.02,
+          "max": 55.72
         },
         "inference": {
-          "mean": 85.34,
-          "median": 85.49,
-          "std": 1.38,
-          "min": 81.84,
-          "max": 87.2
+          "mean": 82.35,
+          "median": 83.23,
+          "std": 5.37,
+          "min": 74.09,
+          "max": 89.96
         },
         "postprocess": {
-          "mean": 128.16,
-          "median": 126.51,
-          "std": 4.32,
-          "min": 123.06,
-          "max": 136.78
+          "mean": 124.74,
+          "median": 121.3,
+          "std": 8.18,
+          "min": 118.57,
+          "max": 143.6
         }
       },
       "max_alpha_difference": 1,
@@ -198,68 +198,68 @@
         848,
         1264
       ],
-      "cpu_latency_ms": 1394.02,
-      "dml_latency_ms": 264.73,
-      "speedup_factor": 5.27,
-      "inference_speedup_factor": 14.06,
+      "cpu_latency_ms": 1190.91,
+      "dml_latency_ms": 259.09,
+      "speedup_factor": 4.6,
+      "inference_speedup_factor": 11.75,
       "cpu_stage_latencies": {
         "e2e": {
-          "mean": 1394.02,
-          "median": 1388.4,
-          "std": 34.79,
-          "min": 1331.6,
-          "max": 1456.07
+          "mean": 1190.91,
+          "median": 1171.04,
+          "std": 69.91,
+          "min": 1117.93,
+          "max": 1341.71
         },
         "preprocess": {
-          "mean": 53.13,
-          "median": 52.79,
-          "std": 2.8,
-          "min": 50.19,
-          "max": 60.46
+          "mean": 50.05,
+          "median": 49.56,
+          "std": 2.86,
+          "min": 46.31,
+          "max": 54.27
         },
         "inference": {
-          "mean": 1190.2,
-          "median": 1185.24,
-          "std": 37.36,
-          "min": 1130.58,
-          "max": 1263.67
+          "mean": 1006.73,
+          "median": 980.62,
+          "std": 70.8,
+          "min": 937.88,
+          "max": 1168.12
         },
         "postprocess": {
-          "mean": 150.69,
-          "median": 149.34,
-          "std": 10.03,
-          "min": 138.44,
-          "max": 165.91
+          "mean": 134.13,
+          "median": 133.07,
+          "std": 8.44,
+          "min": 126.52,
+          "max": 154.63
         }
       },
       "dml_stage_latencies": {
         "e2e": {
-          "mean": 264.73,
-          "median": 262.03,
-          "std": 10.15,
-          "min": 256.49,
-          "max": 290.24
+          "mean": 259.09,
+          "median": 256.89,
+          "std": 5.22,
+          "min": 254.41,
+          "max": 269.96
         },
         "preprocess": {
-          "mean": 49.6,
-          "median": 48.14,
-          "std": 3.63,
-          "min": 47.81,
-          "max": 59.64
+          "mean": 48.64,
+          "median": 48.19,
+          "std": 1.83,
+          "min": 46.88,
+          "max": 52.69
         },
         "inference": {
-          "mean": 84.68,
-          "median": 83.27,
-          "std": 3.72,
-          "min": 82.78,
-          "max": 94.95
+          "mean": 85.68,
+          "median": 84.76,
+          "std": 2.73,
+          "min": 83.88,
+          "max": 93.18
         },
         "postprocess": {
-          "mean": 130.46,
-          "median": 126.79,
-          "std": 10.34,
-          "min": 124.19,
-          "max": 159.04
+          "mean": 124.77,
+          "median": 123.77,
+          "std": 3.73,
+          "min": 121.0,
+          "max": 133.39
         }
       },
       "max_alpha_difference": 1,
@@ -275,68 +275,68 @@
         848,
         1264
       ],
-      "cpu_latency_ms": 1464.3,
-      "dml_latency_ms": 276.4,
-      "speedup_factor": 5.3,
-      "inference_speedup_factor": 14.52,
+      "cpu_latency_ms": 1179.06,
+      "dml_latency_ms": 269.68,
+      "speedup_factor": 4.37,
+      "inference_speedup_factor": 11.47,
       "cpu_stage_latencies": {
         "e2e": {
-          "mean": 1464.3,
-          "median": 1467.38,
-          "std": 68.88,
-          "min": 1365.37,
-          "max": 1570.28
+          "mean": 1179.06,
+          "median": 1188.66,
+          "std": 62.87,
+          "min": 1070.09,
+          "max": 1286.01
         },
         "preprocess": {
-          "mean": 55.13,
-          "median": 53.19,
-          "std": 5.85,
-          "min": 46.39,
-          "max": 63.44
+          "mean": 49.6,
+          "median": 50.91,
+          "std": 2.59,
+          "min": 45.15,
+          "max": 52.0
         },
         "inference": {
-          "mean": 1230.62,
-          "median": 1232.05,
-          "std": 57.77,
-          "min": 1145.08,
-          "max": 1322.79
+          "mean": 985.13,
+          "median": 991.02,
+          "std": 61.87,
+          "min": 882.23,
+          "max": 1090.99
         },
         "postprocess": {
-          "mean": 178.55,
-          "median": 179.21,
-          "std": 16.92,
-          "min": 148.87,
-          "max": 207.39
+          "mean": 144.33,
+          "median": 143.77,
+          "std": 2.7,
+          "min": 140.24,
+          "max": 148.42
         }
       },
       "dml_stage_latencies": {
         "e2e": {
-          "mean": 276.4,
-          "median": 272.59,
-          "std": 10.42,
-          "min": 266.91,
-          "max": 293.64
+          "mean": 269.68,
+          "median": 268.24,
+          "std": 4.5,
+          "min": 264.16,
+          "max": 277.5
         },
         "preprocess": {
-          "mean": 47.41,
-          "median": 46.58,
-          "std": 2.45,
-          "min": 45.67,
-          "max": 54.0
+          "mean": 46.13,
+          "median": 45.01,
+          "std": 2.17,
+          "min": 44.59,
+          "max": 51.72
         },
         "inference": {
-          "mean": 84.76,
-          "median": 82.53,
-          "std": 4.94,
-          "min": 82.05,
-          "max": 95.48
+          "mean": 85.9,
+          "median": 85.39,
+          "std": 1.22,
+          "min": 84.9,
+          "max": 88.77
         },
         "postprocess": {
-          "mean": 144.23,
-          "median": 141.6,
-          "std": 7.74,
-          "min": 137.78,
-          "max": 161.93
+          "mean": 137.64,
+          "median": 136.96,
+          "std": 3.44,
+          "min": 133.7,
+          "max": 143.77
         }
       },
       "max_alpha_difference": 1,
@@ -352,68 +352,68 @@
         848,
         1264
       ],
-      "cpu_latency_ms": 1643.34,
-      "dml_latency_ms": 266.83,
-      "speedup_factor": 6.16,
-      "inference_speedup_factor": 16.23,
+      "cpu_latency_ms": 1194.83,
+      "dml_latency_ms": 260.34,
+      "speedup_factor": 4.59,
+      "inference_speedup_factor": 11.86,
       "cpu_stage_latencies": {
         "e2e": {
-          "mean": 1643.34,
-          "median": 1636.8,
-          "std": 75.34,
-          "min": 1521.22,
-          "max": 1744.45
+          "mean": 1194.83,
+          "median": 1174.56,
+          "std": 53.4,
+          "min": 1135.75,
+          "max": 1285.91
         },
         "preprocess": {
-          "mean": 68.68,
-          "median": 61.05,
-          "std": 16.35,
-          "min": 56.03,
-          "max": 100.15
+          "mean": 50.75,
+          "median": 48.58,
+          "std": 5.07,
+          "min": 46.35,
+          "max": 63.12
         },
         "inference": {
-          "mean": 1395.92,
-          "median": 1387.6,
-          "std": 65.45,
-          "min": 1310.53,
-          "max": 1511.11
+          "mean": 1004.64,
+          "median": 996.87,
+          "std": 46.98,
+          "min": 943.27,
+          "max": 1080.38
         },
         "postprocess": {
-          "mean": 178.73,
-          "median": 181.85,
-          "std": 12.99,
-          "min": 145.56,
-          "max": 192.72
+          "mean": 139.45,
+          "median": 135.34,
+          "std": 10.4,
+          "min": 129.85,
+          "max": 158.15
         }
       },
       "dml_stage_latencies": {
         "e2e": {
-          "mean": 266.83,
-          "median": 264.66,
-          "std": 6.89,
-          "min": 261.92,
-          "max": 284.96
+          "mean": 260.34,
+          "median": 259.26,
+          "std": 5.12,
+          "min": 254.98,
+          "max": 271.91
         },
         "preprocess": {
-          "mean": 47.77,
-          "median": 47.71,
-          "std": 0.64,
-          "min": 46.75,
-          "max": 48.88
+          "mean": 48.6,
+          "median": 48.04,
+          "std": 2.32,
+          "min": 45.5,
+          "max": 53.14
         },
         "inference": {
-          "mean": 85.99,
-          "median": 85.82,
-          "std": 2.16,
-          "min": 84.01,
-          "max": 91.72
+          "mean": 84.7,
+          "median": 83.69,
+          "std": 2.47,
+          "min": 82.43,
+          "max": 90.96
         },
         "postprocess": {
-          "mean": 133.07,
-          "median": 130.95,
-          "std": 6.45,
-          "min": 128.71,
-          "max": 150.69
+          "mean": 127.04,
+          "median": 127.01,
+          "std": 2.61,
+          "min": 123.86,
+          "max": 133.56
         }
       },
       "max_alpha_difference": 1,

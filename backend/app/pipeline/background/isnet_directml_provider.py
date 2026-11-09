@@ -62,8 +62,10 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
         self._load_lock = threading.RLock()
         self._is_inferring: bool = False
         self._inferring_thread_id: int | None = None
+        self._release_pending: bool = False
         self._active_provider: str = "uninitialized"
         self._input_name: str | None = None
+        self._resolved_device_id: int | None = None
 
     @property
     def model_name(self) -> str:
@@ -72,6 +74,11 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
     @property
     def execution_provider(self) -> str:
         return self._active_provider
+
+    @property
+    def directml_device_id(self) -> int | None:
+        """Returns the resolved DirectML device ID after session initialization."""
+        return self._resolved_device_id
 
     def _resolve_model_path(self) -> Path:
         """Resolves model path using priority hierarchy matching CPU provider."""
@@ -97,7 +104,7 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
     def _load_session_sync(self) -> None:
         """Performs pre-flight checks, verifies model integrity, and creates DirectML session."""
         with self._load_lock:
-            if self._session is not None:
+            if self._session is not None and not self._release_pending:
                 return
 
             # 1. Pre-flight check: Verify DirectML execution provider is available in runtime
@@ -122,33 +129,41 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
                 expected_size=self.config.isnet_model_expected_size,
             )
 
-            # 3. Mandatory DirectML Session Options (R3)
-            # Note: DirectML requires ORT_SEQUENTIAL and enable_mem_pattern=False.
-            dml_opts = ort.SessionOptions()
-            dml_opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
-            dml_opts.enable_mem_pattern = False
-            dml_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-            dml_opts.inter_op_num_threads = 1
-            dml_opts.intra_op_num_threads = 1  # GPU-bound; avoid spawning unnecessary CPU threads
-
-            device_id = self.config.directml_device_id
-            providers = ["DmlExecutionProvider"]
-            provider_options: list[dict[str, Any]] = [{"device_id": str(device_id)}]
-
-            logger.info(
-                "Initializing IS-Net DirectML InferenceSession from %s (device_id=%d, mem_pattern=False)",
-                model_path,
-                device_id,
-            )
-
             try:
+                # 3. Resolve DirectML target device via unified discovery helper
+                from app.pipeline.background.device_discovery import resolve_directml_adapter
+
+                adapter_info = resolve_directml_adapter(self.config.directml_device_id)
+                device_id = adapter_info.index
+                self._resolved_device_id = device_id
+
+                # 4. Mandatory DirectML Session Options (R3)
+                # Note: DirectML requires ORT_SEQUENTIAL and enable_mem_pattern=False.
+                dml_opts = ort.SessionOptions()
+                dml_opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+                dml_opts.enable_mem_pattern = False
+                dml_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                dml_opts.inter_op_num_threads = 1
+                dml_opts.intra_op_num_threads = 1  # GPU-bound; avoid spawning unnecessary CPU threads
+
+                providers = ["DmlExecutionProvider"]
+                provider_options: list[dict[str, Any]] = [{"device_id": str(device_id)}]
+
+                logger.info(
+                    "Initializing IS-Net DirectML InferenceSession on %s from %s (device_id=%d, %d MB VRAM, mem_pattern=False)",
+                    adapter_info.description,
+                    model_path,
+                    device_id,
+                    adapter_info.dedicated_vram_mb,
+                )
+
                 session = ort.InferenceSession(
                     str(model_path),
                     sess_options=dml_opts,
                     providers=providers,
                     provider_options=provider_options,
                 )
-                # 4. Verify that session actually bound to DirectML (no silent CPU fallback)
+                # 5. Verify that session actually bound to DirectML (no silent CPU fallback)
                 active = session.get_providers()
                 if "DmlExecutionProvider" not in active:
                     raise DirectMLInitializationError(
@@ -177,7 +192,7 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
 
         Enforces strict mutual exclusion across threads to protect the DirectX 12 session.
         """
-        if self._session is None or self._input_name is None:
+        if self._session is None or self._input_name is None or self._release_pending:
             raise RuntimeError("IS-Net DirectML session is not loaded")
 
         # Concurrency guard: reject concurrent execution on the same DirectML session
@@ -193,7 +208,7 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
 
         try:
             # Re-check session inside lock to prevent race if release() executed before acquisition
-            if self._session is None or self._input_name is None:
+            if self._session is None or self._input_name is None or self._release_pending:
                 raise RuntimeError("IS-Net DirectML session is not loaded")
 
             if self._is_inferring:
@@ -240,6 +255,9 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
             self._is_inferring = False
             self._inference_lock.release()
 
+            if self._release_pending:
+                self.release()
+
     async def remove_background(
         self,
         image_bytes: bytes,
@@ -264,6 +282,7 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
         self._active_provider = "released"
         self._is_inferring = False
         self._inferring_thread_id = None
+        self._release_pending = False
         gc.collect()
 
     def release(self, timeout: float = 5.0) -> None:
@@ -278,38 +297,43 @@ class ISNetDirectMLProvider(BackgroundRemovalProvider):
         """
         current_thread = threading.get_ident()
 
+        # 1. Self-Release Check (Must be performed BEFORE acquiring _load_lock):
+        # If release() is called from within the active inference thread holding _inference_lock,
+        # attempting to acquire _load_lock can cause AB-BA deadlock if an external caller
+        # already holds _load_lock and is waiting for _inference_lock.
+        # Defer session deallocation until after the inference critical section exits.
+        if (
+            self._inferring_thread_id is not None
+            and self._inferring_thread_id == current_thread
+        ):
+            logger.info(
+                "Release requested from active inference thread %d; deferring session cleanup until critical section exits",
+                current_thread,
+            )
+            self._release_pending = True
+            return
+
         with self._load_lock:
-            # 1. Idempotency: If already released or uninitialized, no-op
-            if self._session is None:
+            # 2. Idempotency: If already released or uninitialized (and no release pending), no-op
+            if self._session is None and not self._release_pending:
                 self._active_provider = "released"
                 self._input_name = None
                 self._is_inferring = False
                 self._inferring_thread_id = None
                 return
 
-            # 2. Check if release is invoked from within the active inference thread
-            is_self_inference = (
-                self._inferring_thread_id is not None
-                and self._inferring_thread_id == current_thread
-            )
-
-            if is_self_inference:
-                # Called re-entrantly from inference thread error handler.
-                # Current thread already holds _inference_lock.
+            # 3. External caller: must acquire _inference_lock to ensure no active inference is in flight
+            acquired = self._inference_lock.acquire(timeout=timeout)
+            if not acquired:
+                logger.warning(
+                    "DirectML session release timed out after %.2fs waiting for active inference.",
+                    timeout,
+                )
+                raise DirectMLTimeoutError(
+                    f"DirectML session release timed out after {timeout:.2f}s "
+                    f"waiting for active inference to complete."
+                )
+            try:
                 self._destroy_session_sync()
-            else:
-                # External caller: must acquire _inference_lock to ensure no active inference is in flight
-                acquired = self._inference_lock.acquire(timeout=timeout)
-                if not acquired:
-                    logger.warning(
-                        "DirectML session release timed out after %.2fs waiting for active inference.",
-                        timeout,
-                    )
-                    raise DirectMLTimeoutError(
-                        f"DirectML session release timed out after {timeout:.2f}s "
-                        f"waiting for active inference to complete."
-                    )
-                try:
-                    self._destroy_session_sync()
-                finally:
-                    self._inference_lock.release()
+            finally:
+                self._inference_lock.release()

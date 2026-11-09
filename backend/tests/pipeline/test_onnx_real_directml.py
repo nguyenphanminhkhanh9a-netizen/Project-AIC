@@ -48,10 +48,13 @@ SAMPLE_NAMES = [
 ]
 
 
+from app.pipeline.background.device_discovery import get_directml_device_id
+
+
 @pytest.fixture(scope="module")
 def isnet_directml_provider() -> Generator[BackgroundRemovalProvider, None, None]:
     """Initializes a real ISNetDirectMLProvider for the test module and warms up DirectML shaders."""
-    target_device_id = int(os.environ.get("AIC_PIPELINE_DIRECTML_DEVICE_ID", "1"))
+    target_device_id = get_directml_device_id()
     config = PipelineConfig(
         use_mock_bg_provider=False,
         onnx_execution_provider="directml",
@@ -201,3 +204,26 @@ async def test_real_directml_inference_on_anime_sample(
         "opaque_ratio": solid_ratio,
     }
     out_meta_file.write_text(json.dumps(artifact_meta, indent=2), encoding="utf-8")
+
+
+def test_real_directml_device_selection_matches_hardware(
+    isnet_directml_provider: BackgroundRemovalProvider,
+) -> None:
+    """Verifies that the unified device selection correctly binds to the physical hardware GPU."""
+    from app.pipeline.background.device_discovery import resolve_directml_adapter
+
+    adapter = resolve_directml_adapter(None)
+
+    # 1. Hardware description assertions on host machine
+    assert adapter.vendor_id in (0x10DE, 0x1002, 0x8086)
+    assert not adapter.is_software
+
+    # 2. Provider synchronization assertion
+    assert isnet_directml_provider.execution_provider == "directml"
+    assert getattr(isnet_directml_provider, "directml_device_id", None) == adapter.index
+
+    # 3. Active ONNX Runtime session verification (No silent fallback)
+    session = getattr(isnet_directml_provider, "_session", None)
+    assert session is not None
+    active_providers = session.get_providers()
+    assert active_providers[0] == "DmlExecutionProvider"

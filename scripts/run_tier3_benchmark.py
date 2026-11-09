@@ -14,15 +14,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import ctypes
 import io
 import json
 import os
 import statistics
 import sys
 import time
-import uuid
-from ctypes import wintypes
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +33,11 @@ if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
 
 import numpy as np
 import onnxruntime as ort  # type: ignore[import-not-found,import-untyped]
+from app.pipeline.background.device_discovery import (  # type: ignore[import-untyped]
+    DirectMLDeviceConfigurationError,
+    enumerate_dxgi_adapters,
+    resolve_directml_adapter,
+)
 from app.pipeline.background.image_ops import (  # type: ignore[import-untyped]
     letterbox_preprocess,
     postprocess_mask,
@@ -66,117 +68,29 @@ SAMPLES = [
 
 
 def detect_dxgi_adapters() -> list[tuple[int, str, int, int, int]]:
-    """Enumerates DXGI adapters via COM IDXGIFactory1.
+    """Enumerates DXGI adapters via the unified device_discovery module.
 
     Returns a list of tuples: (adapter_index, description, vram_mb, vendor_id, flags).
     """
-    adapters: list[tuple[int, str, int, int, int]] = []
-    if sys.platform != "win32":
-        return adapters
-
-    try:
-        class LUID(ctypes.Structure):
-            _fields_ = [("LowPart", wintypes.DWORD), ("HighPart", wintypes.LONG)]
-
-        class DXGI_ADAPTER_DESC1(ctypes.Structure):
-            _fields_ = [
-                ("Description", wintypes.WCHAR * 128),
-                ("VendorId", wintypes.UINT),
-                ("DeviceId", wintypes.UINT),
-                ("SubSysId", wintypes.UINT),
-                ("Revision", wintypes.UINT),
-                ("DedicatedVideoMemory", ctypes.c_size_t),
-                ("DedicatedSystemMemory", ctypes.c_size_t),
-                ("SharedSystemMemory", ctypes.c_size_t),
-                ("AdapterLuid", LUID),
-                ("Flags", wintypes.UINT),
-            ]
-
-        dxgi = ctypes.oledll.dxgi
-        factory = ctypes.c_void_p()
-        iid_idxgifactory1 = uuid.UUID("{770aae78-f26f-4dba-a829-253c83d1b387}")
-        riid = (ctypes.c_byte * 16)(*iid_idxgifactory1.bytes_le)
-        hr = dxgi.CreateDXGIFactory1(riid, ctypes.byref(factory))
-        if hr != 0 or not factory.value:
-            return adapters
-
-        vtable = ctypes.cast(
-            ctypes.cast(factory.value, ctypes.POINTER(ctypes.c_void_p))[0],
-            ctypes.POINTER(ctypes.c_void_p),
-        )
-        enum_adapters1 = ctypes.WINFUNCTYPE(
-            ctypes.c_long, ctypes.c_void_p, wintypes.UINT, ctypes.POINTER(ctypes.c_void_p)
-        )(vtable[12])
-        get_desc1_proto = ctypes.WINFUNCTYPE(
-            ctypes.c_long, ctypes.c_void_p, ctypes.POINTER(DXGI_ADAPTER_DESC1)
-        )
-
-        idx = 0
-        while True:
-            adapter = ctypes.c_void_p()
-            if enum_adapters1(factory, idx, ctypes.byref(adapter)) != 0:
-                break
-            if adapter.value is None:
-                break
-            v = ctypes.cast(
-                ctypes.cast(adapter.value, ctypes.POINTER(ctypes.c_void_p))[0],
-                ctypes.POINTER(ctypes.c_void_p),
-            )
-            desc = DXGI_ADAPTER_DESC1()
-            get_desc1_proto(v[10])(adapter, ctypes.byref(desc))
-            vram_mb = int(desc.DedicatedVideoMemory / (1024 * 1024))
-            adapters.append((idx, str(desc.Description), vram_mb, int(desc.VendorId), int(desc.Flags)))
-            idx += 1
-    except (OSError, RuntimeError, ValueError, AttributeError) as exc:
-        print(f"      [DXGI Discovery Warning] Could not enumerate DXGI adapters: {exc}")
-
-    return adapters
+    adapters = enumerate_dxgi_adapters()
+    return [(a.index, a.description, a.dedicated_vram_mb, a.vendor_id, a.flags) for a in adapters]
 
 
 def resolve_directml_device(cli_device_id: int | None = None) -> tuple[int, str, int]:
-    """Resolves target DirectML GPU device index, model name, and dedicated VRAM (MB).
-
-    Priority:
-    1. Explicit CLI argument --device-id (if provided)
-    2. Environment variable AIC_PIPELINE_DIRECTML_DEVICE_ID (if set)
-    3. Auto-detected DXGI discrete GPU (e.g., NVIDIA GeForce RTX 4050, VendorId 0x10DE)
-    4. Default fallback: Adapter index 1 (NVIDIA RTX 4050)
+    """Resolves target DirectML GPU device index, model name, and dedicated VRAM (MB)
+    using the unified application device discovery module.
     """
-    adapters = detect_dxgi_adapters()
-
-    # Priority 1: CLI override
-    if cli_device_id is not None:
-        for idx, desc, vram, _vendor, _flags in adapters:
-            if idx == cli_device_id:
-                return idx, desc, vram
-        return cli_device_id, f"DirectML Adapter {cli_device_id}", 0
-
-    # Priority 2: Environment variable override
-    env_id = os.environ.get("AIC_PIPELINE_DIRECTML_DEVICE_ID")
-    if env_id is not None and env_id.strip().isdigit():
-        target_id = int(env_id.strip())
-        for idx, desc, vram, _vendor, _flags in adapters:
-            if idx == target_id:
-                return idx, desc, vram
-        return target_id, f"DirectML Adapter {target_id}", 0
-
-    # Priority 3: Detect NVIDIA discrete GPU (Vendor ID 0x10DE) or highest dedicated VRAM non-software adapter
-    nvidia_adapters = [a for a in adapters if a[3] == 0x10DE and not (a[4] & 2)]
-    if nvidia_adapters:
-        best_nvidia = max(nvidia_adapters, key=lambda a: a[2])
-        return best_nvidia[0], best_nvidia[1], best_nvidia[2]
-
-    discrete_adapters = [a for a in adapters if not (a[4] & 2) and a[2] > 512]
-    if discrete_adapters:
-        best_discrete = max(discrete_adapters, key=lambda a: a[2])
-        return best_discrete[0], best_discrete[1], best_discrete[2]
-
-    # Priority 4: Fallback to adapter 1
-    for idx, desc, vram, _vendor, _flags in adapters:
-        if idx == 1:
-            return idx, desc, vram
-
-    return 1, "NVIDIA GeForce RTX 4050 Laptop GPU", 5921
+    try:
+        adapter = resolve_directml_adapter(cli_device_id)
+    except DirectMLDeviceConfigurationError:
+        # Non-numeric or malformed environment variables fall back cleanly to discrete GPU detection
+        saved_env = os.environ.pop("AIC_PIPELINE_DIRECTML_DEVICE_ID", None)
+        try:
+            adapter = resolve_directml_adapter(cli_device_id)
+        finally:
+            if saved_env is not None:
+                os.environ["AIC_PIPELINE_DIRECTML_DEVICE_ID"] = saved_env
+    return adapter.index, adapter.description, adapter.dedicated_vram_mb
 
 
 def compute_stats(values: list[float]) -> dict[str, float]:
