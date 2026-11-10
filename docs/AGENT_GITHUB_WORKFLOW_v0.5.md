@@ -113,6 +113,8 @@ PR nên ở trạng thái Draft khi chưa sẵn sàng review. Chỉ chuyển Rea
 7. Auditor xác minh command/output thực tế; Success Auditor chạy smoke/E2E checklist phù hợp với milestone.
 8. Coordinator xác nhận CI và conversations trước khi đề xuất merge.
 
+*Lưu ý bắt buộc:* Toàn bộ quy trình 9 bước, 13 nguyên tắc kỹ thuật cốt lõi và hệ thống 6 trạng thái Review Gate được quy định bắt buộc vĩnh viễn tại `CODE_REVIEW_POLICY.md`. Tuyệt đối không sử dụng `READY FOR OWNER REVIEW` khi Review Gate chưa đạt `REVIEW_APPROVED`.
+
 ## 7. Một GitHub identity không tạo ra reviewer identity thứ hai
 
 Đây là quy tắc quan trọng:
@@ -243,6 +245,7 @@ Không chạy lệnh tạo/merge PR nếu chưa xác nhận đúng repository, b
 - GitHub CLI authentication: https://cli.github.com/manual/gh_auth_login
 - GitHub rule: pull request author cannot approve own PR: https://docs.github.com/en/pull-requests/how-tos/review-pull-requests/approving-a-pull-request-with-required-reviews
 - Windows credential handling: https://learn.microsoft.com/en-us/windows/win32/secbp/handling-passwords
+- Project AIC Permanent Code Review Policy: `CODE_REVIEW_POLICY.md` (root repository)
 
 ---
 

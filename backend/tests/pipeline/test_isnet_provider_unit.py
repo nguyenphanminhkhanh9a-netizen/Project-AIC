@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import io
+import threading
+import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -234,22 +236,59 @@ async def test_isnet_provider_concurrency_lock() -> None:
 
     def mock_load_session() -> None:
         nonlocal load_count
+        time.sleep(0.01)  # Simulate session init latency in worker thread
         load_count += 1
         provider._session = MagicMock()
         provider._input_name = "img"
         provider._active_provider = "cpu"
 
-    async def fake_remove_bg(image_bytes: bytes) -> tuple[bytes, dict[str, int]]:
-        async with provider._lock:
-            if provider._session is None:
-                await asyncio.sleep(0.01)  # Simulate session init latency
-                mock_load_session()
-        return b"PNG_DATA", {"status": 1}
-
-    with patch.object(provider, "remove_background", side_effect=fake_remove_bg):
-        # Run 5 concurrent calls
+    with (
+        patch.object(provider, "_load_session_sync", side_effect=mock_load_session),
+        patch.object(
+            provider,
+            "_run_inference_sync",
+            return_value=(b"PNG_DATA", {"status": 1}),
+        ),
+    ):
+        # Run 5 concurrent calls against real remove_background()
         tasks = [provider.remove_background(b"dummy") for _ in range(5)]
         results = await asyncio.gather(*tasks)
 
     assert len(results) == 5
+    for png_bytes, meta in results:
+        assert png_bytes == b"PNG_DATA"
+        assert meta == {"status": 1}
     assert load_count == 1  # Only loaded once
+
+
+@pytest.mark.asyncio
+async def test_isnet_provider_loads_session_in_worker_thread() -> None:
+    """Verifies that cold-start session initialization runs in a worker thread (F-04)."""
+    provider = ISNetONNXProvider()
+    main_thread_id = threading.get_ident()
+    load_thread_ids: list[int] = []
+
+    def record_thread_load_session() -> None:
+        load_thread_ids.append(threading.get_ident())
+        provider._session = MagicMock()
+        provider._input_name = "img"
+        provider._active_provider = "cpu"
+
+    with (
+        patch.object(
+            provider,
+            "_load_session_sync",
+            side_effect=record_thread_load_session,
+        ),
+        patch.object(
+            provider,
+            "_run_inference_sync",
+            return_value=(b"PNG_DATA", {"status": 1}),
+        ),
+    ):
+        png_bytes, meta = await provider.remove_background(b"dummy")
+
+    assert png_bytes == b"PNG_DATA"
+    assert meta == {"status": 1}
+    assert len(load_thread_ids) == 1
+    assert load_thread_ids[0] != main_thread_id
