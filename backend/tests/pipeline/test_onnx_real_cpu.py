@@ -3,7 +3,7 @@
 Executes genuine IS-Net Anime ONNX inference on 5 real anime test images.
 Verifies geometric preservation (0-pixel delta), authentic 4-channel RGBA generation,
 extrema reach (0, 255), presence of continuous soft alpha transition pixels (N_soft > 0),
-and saves verification artifacts to data/tier3_output/.
+and saves verification artifacts to an isolated temporary directory (tmp_path).
 """
 
 from __future__ import annotations
@@ -24,7 +24,6 @@ from app.pipeline.config import PipelineConfig
 
 MODEL_DEFAULT_PATH = Path(os.path.expanduser("~/.cache/project_aic/models/isnetis.onnx"))
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "real_anime"
-OUTPUT_DIR = Path(__file__).resolve().parents[3] / "data" / "tier3_output"
 
 has_real_model = MODEL_DEFAULT_PATH.is_file()
 has_fixtures = FIXTURES_DIR.is_dir() and len(list(FIXTURES_DIR.glob("*.png"))) >= 5
@@ -66,6 +65,7 @@ def isnet_cpu_provider() -> Generator[BackgroundRemovalProvider, None, None]:
 async def test_real_cpu_inference_on_anime_sample(
     isnet_cpu_provider: BackgroundRemovalProvider,
     sample_name: str,
+    tmp_path: Path,
 ) -> None:
     """Executes real ONNX CPU inference on an anime image and verifies 6 quantitative criteria."""
     sample_path = FIXTURES_DIR / f"{sample_name}.png"
@@ -146,12 +146,11 @@ async def test_real_cpu_inference_on_anime_sample(
                 f"{sample_name}: RGB values altered in solid core (max diff: {max_solid_rgb_diff})"
             )
 
-    # 8. Save Verification Evidence Artifacts into data/tier3_output/
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    out_input_file = OUTPUT_DIR / f"{sample_name}_input.png"
-    out_mask_file = OUTPUT_DIR / f"{sample_name}_mask.png"
-    out_rgba_file = OUTPUT_DIR / f"{sample_name}_output.png"
-    out_meta_file = OUTPUT_DIR / f"{sample_name}_meta.json"
+    # 8. Save Verification Evidence Artifacts into isolated tmp_path (F-06 hermeticity)
+    out_input_file = tmp_path / f"{sample_name}_input.png"
+    out_mask_file = tmp_path / f"{sample_name}_mask.png"
+    out_rgba_file = tmp_path / f"{sample_name}_output.png"
+    out_meta_file = tmp_path / f"{sample_name}_meta.json"
 
     # Save input image
     orig_rgb.save(out_input_file, format="PNG")
@@ -182,3 +181,8 @@ async def test_real_cpu_inference_on_anime_sample(
         "opaque_ratio": solid_ratio,
     }
     out_meta_file.write_text(json.dumps(artifact_meta, indent=2), encoding="utf-8")
+
+    assert out_input_file.is_file() and out_input_file.stat().st_size > 0
+    assert out_mask_file.is_file() and out_mask_file.stat().st_size > 0
+    assert out_rgba_file.is_file() and out_rgba_file.stat().st_size > 0
+    assert out_meta_file.is_file() and out_meta_file.stat().st_size > 0

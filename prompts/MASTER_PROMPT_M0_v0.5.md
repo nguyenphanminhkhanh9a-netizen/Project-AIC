@@ -226,7 +226,7 @@ gh repo view
 
 Không sử dụng `gh auth status --show-token`, `gh auth token`, không echo environment tokens, không đưa token vào prompt/log. `gh` chỉ có quyền của identity hiện đang đăng nhập. Nếu auth hoặc remote không đúng, dừng để owner xử lý.
 
-**Branch/PR rules:** Không direct push lên `main`; mỗi task làm trên branch/workspace cô lập; không force-push; một worker một file-ownership set; coordinator tích hợp. Mở PR sau khi test local, mô tả scope, risk, test evidence và known limitations. Review agent phải độc lập đọc diff. CI pass và conversations resolved trước merge. Không dùng `--admin`. Trong M0, tất cả merge đều do owner thực hiện thủ công.
+**Branch/PR rules:** Không direct push lên `main`; mỗi task làm trên branch/workspace cô lập; không force-push; một worker một file-ownership set; coordinator tích hợp. Mở PR sau khi test local, mô tả scope, risk, test evidence và known limitations. Review agent phải độc lập đọc diff. CI pass và conversations resolved trước merge. Không dùng `--admin`. Trong M0, tất cả merge đều do owner thực hiện thủ công. Bắt buộc tuân thủ 9 bước và 13 nguyên tắc trong `CODE_REVIEW_POLICY.md`; nghiêm cấm dùng `READY FOR OWNER REVIEW` khi Review Gate chưa đạt `REVIEW_APPROVED`.
 
 **Review identity:** nếu tất cả agent dùng cùng `gh` account, AI review comments là advisory, không được giả nhận là required GitHub approval độc lập. PR author không thể approve PR của mình. Chỉ bật required approval khi có independent reviewer identity hợp lệ; nếu chưa có, dùng PR + CI + conversation resolution và owner manual review.
 

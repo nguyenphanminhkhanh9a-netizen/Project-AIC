@@ -154,7 +154,7 @@ class ISNetONNXProvider(BackgroundRemovalProvider):
         """
         async with self._lock:
             if self._session is None:
-                self._load_session_sync()
+                await asyncio.to_thread(self._load_session_sync)
 
         return await asyncio.to_thread(self._run_inference_sync, image_bytes, **kwargs)
 
