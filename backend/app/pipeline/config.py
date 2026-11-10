@@ -137,6 +137,19 @@ class PipelineConfig(BaseSettings):
         default=4,
         description="Maximum intra-op thread count for ONNX Runtime CPU session",
     )
+    onnx_execution_provider: str = Field(
+        default="cpu",
+        description="ONNX Runtime execution provider: 'cpu' or 'directml'",
+    )
+    directml_device_id: int | None = Field(
+        default=None,
+        ge=0,
+        description="DirectML GPU adapter index (0-indexed). Defaults to None for automatic discrete GPU selection.",
+    )
+    directml_strict_concurrency: bool = Field(
+        default=True,
+        description="Strictly prohibit concurrent inference on the same DirectML session",
+    )
 
 
 pipeline_config = PipelineConfig()

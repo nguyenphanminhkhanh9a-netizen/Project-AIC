@@ -1,0 +1,426 @@
+{
+  "timestamp": "2026-11-09T06:27:25Z",
+  "model_path": "C:\\Users\\PC KHANH\\.cache\\project_aic\\models\\isnetis.onnx",
+  "model_sha256": "f15622d853e8260172812b657053460e20806f04b9e05147d49af7bed31a6e99",
+  "directml_available": true,
+  "hardware": {
+    "gpu_model": "NVIDIA GeForce RTX 4050 Laptop GPU",
+    "directml_device_id": 1,
+    "dedicated_vram_mb": 5921,
+    "available_execution_providers": [
+      "DmlExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "cpu_session_providers": [
+      "CPUExecutionProvider"
+    ],
+    "dml_session_providers": [
+      "DmlExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "no_silent_fallback_verified": true
+  },
+  "session_initialization_ms": {
+    "cpu_init_ms": 354.28,
+    "dml_init_ms": 1179.82
+  },
+  "benchmark_protocol": {
+    "warmup_iterations_per_image": 2,
+    "official_iterations_per_image": 10
+  },
+  "overall_summary": {
+    "average_cpu_e2e_latency_ms": 1188.53,
+    "average_dml_e2e_latency_ms": 250.63,
+    "average_e2e_speedup_factor": 4.74,
+    "average_cpu_inference_latency_ms": 1006.02,
+    "average_dml_inference_latency_ms": 78.14,
+    "average_inference_speedup_factor": 12.87
+  },
+  "comparisons": [
+    {
+      "sample_id": "sample_01_simple_bg",
+      "description": "Simple Solid Background (Schoolgirl)",
+      "dimensions": [
+        848,
+        1264
+      ],
+      "cpu_latency_ms": 1183.37,
+      "dml_latency_ms": 208.63,
+      "speedup_factor": 5.67,
+      "inference_speedup_factor": 19.55,
+      "cpu_stage_latencies": {
+        "e2e": {
+          "mean": 1183.37,
+          "median": 1181.49,
+          "std": 52.95,
+          "min": 1085.05,
+          "max": 1272.26
+        },
+        "preprocess": {
+          "mean": 39.25,
+          "median": 38.54,
+          "std": 2.45,
+          "min": 36.24,
+          "max": 43.0
+        },
+        "inference": {
+          "mean": 1018.44,
+          "median": 1013.84,
+          "std": 52.59,
+          "min": 926.04,
+          "max": 1112.45
+        },
+        "postprocess": {
+          "mean": 125.68,
+          "median": 127.1,
+          "std": 2.96,
+          "min": 121.78,
+          "max": 128.71
+        }
+      },
+      "dml_stage_latencies": {
+        "e2e": {
+          "mean": 208.63,
+          "median": 205.0,
+          "std": 10.3,
+          "min": 198.58,
+          "max": 225.8
+        },
+        "preprocess": {
+          "mean": 36.73,
+          "median": 36.78,
+          "std": 1.3,
+          "min": 34.15,
+          "max": 38.31
+        },
+        "inference": {
+          "mean": 52.09,
+          "median": 46.36,
+          "std": 9.6,
+          "min": 45.68,
+          "max": 68.0
+        },
+        "postprocess": {
+          "mean": 119.8,
+          "median": 119.11,
+          "std": 3.1,
+          "min": 114.85,
+          "max": 124.92
+        }
+      },
+      "max_alpha_difference": 1,
+      "mean_alpha_difference": 0.0,
+      "exact_alpha_match_percent": 100.0,
+      "within_1_alpha_match_percent": 100.0,
+      "discrepancy_explanation": "Normal sub-LSB float32 variance due to GPU DirectX HLSL SIMD FP32 rounding vs CPU AVX2 instructions."
+    },
+    {
+      "sample_id": "sample_02_complex_bg",
+      "description": "Complex Scenic Background (Akihabara Street)",
+      "dimensions": [
+        848,
+        1264
+      ],
+      "cpu_latency_ms": 1194.48,
+      "dml_latency_ms": 255.39,
+      "speedup_factor": 4.68,
+      "inference_speedup_factor": 12.33,
+      "cpu_stage_latencies": {
+        "e2e": {
+          "mean": 1194.48,
+          "median": 1193.14,
+          "std": 57.4,
+          "min": 1097.52,
+          "max": 1284.49
+        },
+        "preprocess": {
+          "mean": 50.2,
+          "median": 47.61,
+          "std": 5.73,
+          "min": 46.23,
+          "max": 64.27
+        },
+        "inference": {
+          "mean": 1015.15,
+          "median": 1020.97,
+          "std": 49.88,
+          "min": 926.55,
+          "max": 1085.34
+        },
+        "postprocess": {
+          "mean": 129.13,
+          "median": 125.75,
+          "std": 7.13,
+          "min": 122.56,
+          "max": 146.44
+        }
+      },
+      "dml_stage_latencies": {
+        "e2e": {
+          "mean": 255.39,
+          "median": 252.77,
+          "std": 8.07,
+          "min": 244.95,
+          "max": 274.62
+        },
+        "preprocess": {
+          "mean": 48.29,
+          "median": 47.1,
+          "std": 2.94,
+          "min": 46.02,
+          "max": 55.72
+        },
+        "inference": {
+          "mean": 82.35,
+          "median": 83.23,
+          "std": 5.37,
+          "min": 74.09,
+          "max": 89.96
+        },
+        "postprocess": {
+          "mean": 124.74,
+          "median": 121.3,
+          "std": 8.18,
+          "min": 118.57,
+          "max": 143.6
+        }
+      },
+      "max_alpha_difference": 1,
+      "mean_alpha_difference": 0.0,
+      "exact_alpha_match_percent": 100.0,
+      "within_1_alpha_match_percent": 100.0,
+      "discrepancy_explanation": "Normal sub-LSB float32 variance due to GPU DirectX HLSL SIMD FP32 rounding vs CPU AVX2 instructions."
+    },
+    {
+      "sample_id": "sample_03_long_hair",
+      "description": "Long Flowing Twintails & Ahoge (Miku Idol)",
+      "dimensions": [
+        848,
+        1264
+      ],
+      "cpu_latency_ms": 1190.91,
+      "dml_latency_ms": 259.09,
+      "speedup_factor": 4.6,
+      "inference_speedup_factor": 11.75,
+      "cpu_stage_latencies": {
+        "e2e": {
+          "mean": 1190.91,
+          "median": 1171.04,
+          "std": 69.91,
+          "min": 1117.93,
+          "max": 1341.71
+        },
+        "preprocess": {
+          "mean": 50.05,
+          "median": 49.56,
+          "std": 2.86,
+          "min": 46.31,
+          "max": 54.27
+        },
+        "inference": {
+          "mean": 1006.73,
+          "median": 980.62,
+          "std": 70.8,
+          "min": 937.88,
+          "max": 1168.12
+        },
+        "postprocess": {
+          "mean": 134.13,
+          "median": 133.07,
+          "std": 8.44,
+          "min": 126.52,
+          "max": 154.63
+        }
+      },
+      "dml_stage_latencies": {
+        "e2e": {
+          "mean": 259.09,
+          "median": 256.89,
+          "std": 5.22,
+          "min": 254.41,
+          "max": 269.96
+        },
+        "preprocess": {
+          "mean": 48.64,
+          "median": 48.19,
+          "std": 1.83,
+          "min": 46.88,
+          "max": 52.69
+        },
+        "inference": {
+          "mean": 85.68,
+          "median": 84.76,
+          "std": 2.73,
+          "min": 83.88,
+          "max": 93.18
+        },
+        "postprocess": {
+          "mean": 124.77,
+          "median": 123.77,
+          "std": 3.73,
+          "min": 121.0,
+          "max": 133.39
+        }
+      },
+      "max_alpha_difference": 1,
+      "mean_alpha_difference": 3e-05,
+      "exact_alpha_match_percent": 100.0,
+      "within_1_alpha_match_percent": 100.0,
+      "discrepancy_explanation": "Normal sub-LSB float32 variance due to GPU DirectX HLSL SIMD FP32 rounding vs CPU AVX2 instructions."
+    },
+    {
+      "sample_id": "sample_04_small_accessories",
+      "description": "Small Accessories (Headphones, Ribbons, Charms)",
+      "dimensions": [
+        848,
+        1264
+      ],
+      "cpu_latency_ms": 1179.06,
+      "dml_latency_ms": 269.68,
+      "speedup_factor": 4.37,
+      "inference_speedup_factor": 11.47,
+      "cpu_stage_latencies": {
+        "e2e": {
+          "mean": 1179.06,
+          "median": 1188.66,
+          "std": 62.87,
+          "min": 1070.09,
+          "max": 1286.01
+        },
+        "preprocess": {
+          "mean": 49.6,
+          "median": 50.91,
+          "std": 2.59,
+          "min": 45.15,
+          "max": 52.0
+        },
+        "inference": {
+          "mean": 985.13,
+          "median": 991.02,
+          "std": 61.87,
+          "min": 882.23,
+          "max": 1090.99
+        },
+        "postprocess": {
+          "mean": 144.33,
+          "median": 143.77,
+          "std": 2.7,
+          "min": 140.24,
+          "max": 148.42
+        }
+      },
+      "dml_stage_latencies": {
+        "e2e": {
+          "mean": 269.68,
+          "median": 268.24,
+          "std": 4.5,
+          "min": 264.16,
+          "max": 277.5
+        },
+        "preprocess": {
+          "mean": 46.13,
+          "median": 45.01,
+          "std": 2.17,
+          "min": 44.59,
+          "max": 51.72
+        },
+        "inference": {
+          "mean": 85.9,
+          "median": 85.39,
+          "std": 1.22,
+          "min": 84.9,
+          "max": 88.77
+        },
+        "postprocess": {
+          "mean": 137.64,
+          "median": 136.96,
+          "std": 3.44,
+          "min": 133.7,
+          "max": 143.77
+        }
+      },
+      "max_alpha_difference": 1,
+      "mean_alpha_difference": 0.0001,
+      "exact_alpha_match_percent": 99.99,
+      "within_1_alpha_match_percent": 100.0,
+      "discrepancy_explanation": "Normal sub-LSB float32 variance due to GPU DirectX HLSL SIMD FP32 rounding vs CPU AVX2 instructions."
+    },
+    {
+      "sample_id": "sample_05_translucent_costume",
+      "description": "Translucent Fabric & Wings (Fairy Sorceress)",
+      "dimensions": [
+        848,
+        1264
+      ],
+      "cpu_latency_ms": 1194.83,
+      "dml_latency_ms": 260.34,
+      "speedup_factor": 4.59,
+      "inference_speedup_factor": 11.86,
+      "cpu_stage_latencies": {
+        "e2e": {
+          "mean": 1194.83,
+          "median": 1174.56,
+          "std": 53.4,
+          "min": 1135.75,
+          "max": 1285.91
+        },
+        "preprocess": {
+          "mean": 50.75,
+          "median": 48.58,
+          "std": 5.07,
+          "min": 46.35,
+          "max": 63.12
+        },
+        "inference": {
+          "mean": 1004.64,
+          "median": 996.87,
+          "std": 46.98,
+          "min": 943.27,
+          "max": 1080.38
+        },
+        "postprocess": {
+          "mean": 139.45,
+          "median": 135.34,
+          "std": 10.4,
+          "min": 129.85,
+          "max": 158.15
+        }
+      },
+      "dml_stage_latencies": {
+        "e2e": {
+          "mean": 260.34,
+          "median": 259.26,
+          "std": 5.12,
+          "min": 254.98,
+          "max": 271.91
+        },
+        "preprocess": {
+          "mean": 48.6,
+          "median": 48.04,
+          "std": 2.32,
+          "min": 45.5,
+          "max": 53.14
+        },
+        "inference": {
+          "mean": 84.7,
+          "median": 83.69,
+          "std": 2.47,
+          "min": 82.43,
+          "max": 90.96
+        },
+        "postprocess": {
+          "mean": 127.04,
+          "median": 127.01,
+          "std": 2.61,
+          "min": 123.86,
+          "max": 133.56
+        }
+      },
+      "max_alpha_difference": 1,
+      "mean_alpha_difference": 8e-05,
+      "exact_alpha_match_percent": 99.99,
+      "within_1_alpha_match_percent": 100.0,
+      "discrepancy_explanation": "Normal sub-LSB float32 variance due to GPU DirectX HLSL SIMD FP32 rounding vs CPU AVX2 instructions."
+    }
+  ]
+}

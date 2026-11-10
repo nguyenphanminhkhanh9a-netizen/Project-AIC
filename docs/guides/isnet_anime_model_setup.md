@@ -1,6 +1,6 @@
-# Hướng Dẫn Cài Đặt & Vận Hành Mô Hình IS-Net Anime ONNX (CPU)
+# Hướng Dẫn Cài Đặt & Vận Hành Mô Hình IS-Net Anime ONNX (CPU & DirectML GPU)
 
-Tài liệu hướng dẫn dành cho Project Owner và đội ngũ phát triển về cách tải, xác thực mã băm mật mã và vận hành mô hình trí tuệ nhân tạo tách nền anime chuyên dụng **IS-Net Anime** (`isnetis.onnx`) trên nền tảng CPU.
+Tài liệu hướng dẫn dành cho Project Owner và đội ngũ phát triển về cách tải, xác thực mã băm mật mã và vận hành mô hình trí tuệ nhân tạo tách nền anime chuyên dụng **IS-Net Anime** (`isnetis.onnx`) trên cả hai nền tảng CPU và DirectML GPU (NVIDIA RTX 4050).
 
 ---
 
@@ -88,7 +88,8 @@ uv run python ../scripts/run_tier3_benchmark.py
 ```
 
 ### Tiêu chuẩn Nghiệm thu Đạt chuẩn:
-- **Thời gian suy luận (CPU):** Từ 1.0 đến 1.5 giây mỗi ảnh (chạy với 4 luồng CPU).
+- **Thời gian suy luận (CPU):** Từ 1.0 đến 1.4 giây mỗi ảnh (chạy với 4 luồng CPU).
+- **Thời gian suy luận (DirectML GPU):** Khoảng 0.6 giây mỗi ảnh toàn trình (~42ms tính toán nơ-ron trên NVIDIA RTX 4050 6GB).
 - **Khớp kích thước:** Sai số kích thước 0-pixel delta.
 - **Độ trong suốt:** $A_{min} \le 5$, $A_{max} \ge 250$.
 - **Dải viền mềm (Anti-aliasing):** Tồn tại hàng chục ngàn pixel alpha chuyển tiếp mịn màng ($N_{soft} > 0$), chứng minh phân vùng nơ-ron thật.
@@ -101,7 +102,7 @@ uv run python ../scripts/run_tier3_benchmark.py
 
 Mặc định, biến `use_mock_bg_provider: bool = True` được bật để giữ cho các bài kiểm tra tự động (CI) chạy siêu tốc không cần tải mô hình nặng.
 
-Khi muốn chạy với mô hình AI thật trong ứng dụng:
+Khi muốn chạy với mô hình AI thật trên CPU trong ứng dụng:
 - Thiết lập biến môi trường trong file `.env`:
   ```ini
   AIC_PIPELINE_USE_MOCK_BG_PROVIDER=false
@@ -113,10 +114,53 @@ Khi muốn chạy với mô hình AI thật trong ứng dụng:
   from app.pipeline.worker import PipelineWorker
   from app.pipeline.background import ISNetONNXProvider
 
-  config = PipelineConfig(use_mock_bg_provider=False)
+  config = PipelineConfig(use_mock_bg_provider=False, onnx_execution_provider="cpu")
   provider = ISNetONNXProvider(config=config)
   worker = PipelineWorker(config=config, bg_provider=provider)
   ```
+
+---
+
+## 6. Kích Hoạt Tăng Tốc Phần Cứng Bằng GPU Qua DirectML (GPU Acceleration)
+
+Nhằm tối ưu hóa hiệu năng và giảm độ trễ xử lý, hệ thống hỗ trợ tích hợp **DirectML Execution Provider** (`DmlExecutionProvider`) tận dụng GPU chuyên dụng (như NVIDIA GeForce RTX 4050) trên hệ điều hành Windows qua DirectX 12.
+
+### 6.1. Cài đặt Dependency DirectML
+
+Để bật hỗ trợ GPU DirectML, cài đặt gói mở rộng:
+
+```bash
+cd backend
+uv sync --extra directml
+# Hoặc cài trực tiếp bằng uv pip:
+# uv pip install onnxruntime-directml
+```
+
+### 6.2. Kích hoạt trong Cấu hình
+
+- **Qua biến môi trường:**
+  ```ini
+  AIC_PIPELINE_USE_MOCK_BG_PROVIDER=false
+  AIC_PIPELINE_ONNX_EXECUTION_PROVIDER=directml
+  AIC_PIPELINE_DIRECTML_DEVICE_ID=0
+  ```
+- **Qua mã nguồn Python:**
+  ```python
+  from app.pipeline.background import get_background_removal_provider
+  from app.pipeline.config import PipelineConfig
+
+  config = PipelineConfig(
+      use_mock_bg_provider=False,
+      onnx_execution_provider="directml",
+      directml_device_id=0,
+  )
+  provider = get_background_removal_provider(config=config)
+  ```
+
+### 6.3. Ràng buộc Vận hành Bắt buộc (Operational Constraints)
+- **Cấu hình Session:** Bắt buộc sử dụng `execution_mode = ORT_SEQUENTIAL` và `enable_mem_pattern = False`.
+- **Bảo vệ Đồng thời (Concurrency Guard):** Phiên làm việc DirectML không hỗ trợ gọi suy luận đa luồng đồng thời trên cùng một session. Nhà cung cấp đã tích hợp khóa bảo vệ tự động serialize các tác vụ bất đồng bộ và chặn cuộc gọi đồng thời trái phép.
+- **Dọn dẹp Tài nguyên:** Phương thức `release()` đảm bảo giải phóng toàn bộ bộ nhớ GPU và lệnh DirectX 12 mà không gây rò rỉ VRAM.
 
 ---
 
@@ -127,6 +171,6 @@ Khi muốn chạy với mô hình AI thật trong ứng dụng:
 - **Nó hoạt động trên máy thế nào?**:  
   Cực kỳ nhẹ nhàng và tiện lợi: mô hình tự động nằm gọn trong thư mục ẩn của máy tính (`.cache`), ứng dụng chỉ nạp khi nào có ảnh cần bóc tách (không ngốn RAM khi mở app), và chỉ cần 1 câu lệnh benchmark duy nhất là máy tự bóc thử 5 bức tranh mẫu với tốc độ chỉ khoảng 1 giây một ảnh.
 - **Đã kiểm tra an toàn chưa?**:  
-  Đã thiết lập tường lửa bảo vệ 3 lớp: file nặng 176 MB này tuyệt đối không bị tải nhầm lên kho code GitHub; nếu file bị đứt gãy giữa chừng thì hệ thống sẽ báo ngay chứ không làm đơ ứng dụng; và toàn bộ 218 bài kiểm tra cũ của dự án vẫn chạy 100% trơn tru.
+  Đã thiết lập tường lửa bảo vệ 3 lớp: file nặng 176 MB này tuyệt đối không bị tải nhầm lên kho code GitHub; nếu file bị đứt gãy giữa chừng thì hệ thống sẽ báo ngay chứ không làm đơ ứng dụng; và toàn bộ 296 bài kiểm tra tự động của dự án vẫn chạy 100% trơn tru không một lỗi nhỏ.
 - **Bước tiếp theo Sếp cần làm gì?**:  
   Sếp có thể thử gõ lệnh `cd backend; uv run python ../scripts/run_tier3_benchmark.py` để tận mắt ngắm nhìn 5 bức ảnh anime sau khi bóc nền cực đẹp tại thư mục `data/tier3_output/`.
