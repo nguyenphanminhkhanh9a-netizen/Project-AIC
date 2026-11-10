@@ -24,9 +24,13 @@ import numpy as np
 import pytest
 from PIL import Image, UnidentifiedImageError
 
-# Setup paths
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-TIER3_DIR = PROJECT_ROOT / "data" / "tier3_output"
+FIXTURE_TIER3_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "tier3_output"
+TIER3_DIR = (
+    FIXTURE_TIER3_DIR
+    if FIXTURE_TIER3_DIR.is_dir()
+    else (PROJECT_ROOT / "data" / "tier3_output")
+)
 VIS_DIR = TIER3_DIR / "visual_evidence"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 

@@ -8,8 +8,12 @@ from __future__ import annotations
 
 import io
 import os
+import sys
+from collections.abc import Generator
+from contextlib import ExitStack
 from pathlib import Path
 from typing import Literal
+from unittest.mock import patch
 
 import pytest
 from PIL import Image, ImageDraw, ImageFilter
@@ -22,6 +26,12 @@ from app.domain.character import (
     Resolution,
     SpriteAlignment,
 )
+from app.pipeline.background.device_discovery import (
+    DXGI_ADAPTER_FLAG_NONE,
+    VENDOR_INTEL,
+    VENDOR_NVIDIA,
+    DXGIAdapterInfo,
+)
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -29,6 +39,10 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "failure_mode: marks tests for Owner failure modes")
     config.addinivalue_line("markers", "security: marks security and SSRF tests")
     config.addinivalue_line("markers", "stress: marks concurrency and stress tests")
+    config.addinivalue_line(
+        "markers",
+        "directml_hardware: marks genuine hardware integration tests requiring real DirectX 12 GPU",
+    )
 
 
 def to_png_bytes(img: Image.Image) -> bytes:
@@ -372,3 +386,66 @@ def sample_character_manifest(tmp_path: Path) -> CharacterManifest:
         ),
         assets=assets,
     )
+
+
+@pytest.fixture
+def synthetic_dxgi_adapters() -> list[DXGIAdapterInfo]:
+    """Provides standard dual-GPU DXGI adapters (Intel iGPU + NVIDIA RTX 4050 dGPU) for portable testing."""
+    return [
+        DXGIAdapterInfo(
+            index=0,
+            description="Intel(R) UHD Graphics",
+            dedicated_vram_bytes=128 * 1024 * 1024,
+            dedicated_vram_mb=128,
+            shared_ram_mb=16384,
+            vendor_id=VENDOR_INTEL,
+            device_id=0x4680,
+            flags=DXGI_ADAPTER_FLAG_NONE,
+            luid=0x1000,
+        ),
+        DXGIAdapterInfo(
+            index=1,
+            description="NVIDIA GeForce RTX 4050 Laptop GPU",
+            dedicated_vram_bytes=6 * 1024 * 1024 * 1024,
+            dedicated_vram_mb=6144,
+            shared_ram_mb=16384,
+            vendor_id=VENDOR_NVIDIA,
+            device_id=0x28A0,
+            flags=DXGI_ADAPTER_FLAG_NONE,
+            luid=0x1001,
+        ),
+    ]
+
+
+@pytest.fixture(autouse=True)
+def auto_mock_dxgi_for_pipeline_unit_tests(
+    request: pytest.FixtureRequest,
+    synthetic_dxgi_adapters: list[DXGIAdapterInfo],
+) -> Generator[None, None, None]:
+    """Automatically provides synthetic DXGI adapters for unit/concurrency tests unless marked directml_hardware."""
+    if "directml_hardware" in request.keywords:
+        yield
+        return
+
+    # If the test is in test_device_discovery.py, let the test manage its own explicit patches
+    if "test_device_discovery" in request.node.nodeid:
+        yield
+        return
+
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch(
+                "app.pipeline.background.device_discovery.enumerate_dxgi_adapters",
+                return_value=synthetic_dxgi_adapters,
+            )
+        )
+        bench_mod = sys.modules.get("run_tier3_benchmark")
+        if bench_mod is not None and hasattr(bench_mod, "enumerate_dxgi_adapters"):
+            stack.enter_context(
+                patch(
+                    "run_tier3_benchmark.enumerate_dxgi_adapters",
+                    return_value=synthetic_dxgi_adapters,
+                )
+            )
+        yield
+

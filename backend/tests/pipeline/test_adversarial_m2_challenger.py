@@ -17,6 +17,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import onnxruntime as ort  # type: ignore[import-not-found,import-untyped]
 import pytest
 from PIL import Image
 
@@ -151,6 +152,11 @@ class TestBenchmarkCLIOptionsAndStats:
 class TestPipelineWorkerRealIntegrationAndCleanup:
     """Stress-tests PipelineWorker integration with real providers and verifies PipelineWorker.stop() releases resources."""
 
+    @pytest.mark.directml_hardware
+    @pytest.mark.skipif(
+        not (sys.platform == "win32" and "DmlExecutionProvider" in ort.get_available_providers()),
+        reason="Requires Windows host with DirectML GPU runtime",
+    )
     @pytest.mark.asyncio
     async def test_worker_directml_resource_cleanup_on_stop(self) -> None:
         """Empirically verifies that PipelineWorker under real DirectML configuration deallocates session on stop()."""
@@ -307,6 +313,11 @@ class TestDirectMLAntiSilentFallback:
         ):
             provider._load_session_sync()
 
+    @pytest.mark.directml_hardware
+    @pytest.mark.skipif(
+        not (sys.platform == "win32" and "DmlExecutionProvider" in ort.get_available_providers()),
+        reason="Requires Windows host with DirectML GPU runtime",
+    )
     def test_directml_hardware_binding_on_host_rtx4050(self) -> None:
         """Empirically verifies that ISNetDirectMLProvider on this machine binds to DmlExecutionProvider without silent fallback."""
         model_path = Path.home() / ".cache" / "project_aic" / "models" / "isnetis.onnx"
@@ -332,6 +343,11 @@ class TestDirectMLAntiSilentFallback:
         provider.release()
         assert provider._session is None
 
+    @pytest.mark.directml_hardware
+    @pytest.mark.skipif(
+        not (sys.platform == "win32" and "DmlExecutionProvider" in ort.get_available_providers()),
+        reason="Requires Windows host with DirectML GPU runtime",
+    )
     def test_directml_invalid_adapter_raises_and_cleans_up(self) -> None:
         """Empirically verifies that requesting an invalid DirectML adapter index (e.g., 99) raises and cleans up."""
         model_path = Path.home() / ".cache" / "project_aic" / "models" / "isnetis.onnx"
