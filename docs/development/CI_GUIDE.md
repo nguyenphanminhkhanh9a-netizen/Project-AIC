@@ -216,3 +216,8 @@ All contributors and AI agents must strictly abide by the **Integrity Mandate** 
 - **Symptom:** `FileNotFoundError: .temp_envs/cpu_env` or `DirectML COM error`.
 - **Cause:** Attempting to run `scripts/check_wheel_records.py` or `scripts/verify_wddm_and_dxgi.py` on Linux CI runners.
 - **Fix:** These scripts are designed strictly for Windows host forensic validation. Do not include them in the Linux CI workflow.
+
+### Issue E: DirectML Unit Tests Platform Boundary in Linux Hosted CI
+- **Symptom:** `DirectMLDeviceNotFoundError: No graphics adapters discovered on the system` during `test_isnet_directml_unit.py` or `test_adversarial_isnet_challenger2.py`.
+- **Cause:** DirectML is a Microsoft DirectX 12 technology. On Linux (`ubuntu-latest`), `app.pipeline.background.device_discovery.enumerate_dxgi_adapters()` returns an empty list (`[]`) because DXGI COM is unavailable. Tests invoking `_load_session_sync()` without an adapter patch expect Windows runtime or DXGI adapters.
+- **Remediation Plan:** Application-level update (pending Project Owner approval): DirectML unit tests should either mock `resolve_directml_adapter` / `enumerate_dxgi_adapters` to return simulated `DXGIAdapterInfo`, or mark the tests with `@pytest.mark.skipif(sys.platform != "win32", reason="Requires Windows DXGI COM runtime")`. In accordance with CI integrity guidelines, application code remains untouched by the CI implementer.
