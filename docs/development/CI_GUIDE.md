@@ -52,7 +52,7 @@ To defend against supply-chain poisoning and upstream tag hijacking, all third-p
 | Third-Party Action | Version Tag | Pinned Immutable Commit SHA | Purpose |
 | :--- | :--- | :--- | :--- |
 | `actions/checkout` | `v4.2.2` | `11bd71901bbe5b1630ceea73d27597364c9af683` | Secure repository checkout |
-| `astral-sh/setup-uv` | `v5.3.0` | `d5854619746e1074e06bc7551044ba99b24765d7` | Fast Python package management and cache |
+| `astral-sh/setup-uv` | `v5.3.0` | `1edb52594c857e2b5b13128931090f0640537287` | Fast Python package management and cache |
 | `actions/setup-python` | `v5.4.0` | `42375524e23c412d93fb67b49958b491fce71c38` | Python 3.12 runtime environment |
 | `actions/setup-node` | `v4.2.0` | `1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a` | Node.js 20 runtime and npm cache |
 
