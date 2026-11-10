@@ -13,6 +13,7 @@ import asyncio
 import io
 import json
 import os
+import sys
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
@@ -34,10 +35,13 @@ has_real_model = MODEL_DEFAULT_PATH.is_file()
 has_fixtures = FIXTURES_DIR.is_dir() and len(list(FIXTURES_DIR.glob("*.png"))) >= 5
 has_directml = "DmlExecutionProvider" in ort.get_available_providers()
 
-pytestmark = pytest.mark.skipif(
-    not (has_real_model and has_fixtures and has_directml),
-    reason="Skipping Tier 3 DirectML real inference: requires isnetis.onnx, anime fixtures, and DirectML GPU runtime",
-)
+pytestmark = [
+    pytest.mark.directml_hardware,
+    pytest.mark.skipif(
+        not (sys.platform == "win32" and has_real_model and has_fixtures and has_directml),
+        reason="Skipping Tier 3 DirectML real inference: requires Windows DirectX 12 GPU, DirectML execution provider, and model weights",
+    ),
+]
 
 SAMPLE_NAMES = [
     "sample_01_simple_bg",

@@ -1,0 +1,354 @@
+{
+  "version": "1.0",
+  "description": "Visual evidence artifact manifest for Tier 3 IS-Net Anime ONNX background removal",
+  "alpha_metrics_specification": {
+    "transparent": "alpha == 0",
+    "soft": "0 < alpha < 255",
+    "solid": "alpha == 255",
+    "disjoint_sum_invariant": "transparent_pixels + soft_pixels + solid_pixels == total_pixels",
+    "transitional_alpha_note": "transitional_alpha_pixels (10 <= alpha <= 245) is a diagnostic subset of soft_pixels"
+  },
+  "target_flat_count": 30,
+  "samples": [
+    {
+      "sample_code": "sample_01",
+      "full_key": "sample_01_simple_bg",
+      "description": "Simple Solid Background (Schoolgirl)",
+      "dimensions": [
+        848,
+        1264
+      ],
+      "latency_ms": 1579.1336999973282,
+      "total_pixels": 1071872,
+      "transparent_pixels": 581232,
+      "soft_pixels": 15842,
+      "solid_pixels": 474798,
+      "transitional_alpha_pixels": 12260,
+      "transparent_percent": 54.23,
+      "soft_percent": 1.48,
+      "solid_percent": 44.3,
+      "transitional_alpha_percent": 1.14,
+      "soft_edge_pixels": 15842,
+      "flat_files": {
+        "mask": "sample_01_mask.png",
+        "checkerboard": "sample_01_checkerboard.png",
+        "comparison": "sample_01_comparison.png",
+        "zoom_crops": [
+          "sample_01_zoom_01.png",
+          "sample_01_zoom_02.png",
+          "sample_01_zoom_03.png"
+        ]
+      },
+      "crops": [
+        {
+          "zoom_key": "sample_01_zoom_01.png",
+          "title": "Hair Strands & Bangs",
+          "bbox": [
+            150,
+            140,
+            400,
+            390
+          ],
+          "flat_path": "data\\tier3_output\\visual_evidence\\sample_01_zoom_01.png",
+          "strip_path": "data\\tier3_output\\visual_evidence\\sample_01_simple_bg\\05_crop_hair_bangs.png"
+        },
+        {
+          "zoom_key": "sample_01_zoom_02.png",
+          "title": "Sailor Collar & Bow",
+          "bbox": [
+            300,
+            180,
+            550,
+            430
+          ],
+          "flat_path": "data\\tier3_output\\visual_evidence\\sample_01_zoom_02.png",
+          "strip_path": "data\\tier3_output\\visual_evidence\\sample_01_simple_bg\\06_crop_collar_bow.png"
+        },
+        {
+          "zoom_key": "sample_01_zoom_03.png",
+          "title": "Skirt Pleats & Hem",
+          "bbox": [
+            650,
+            50,
+            900,
+            300
+          ],
+          "flat_path": "data\\tier3_output\\visual_evidence\\sample_01_zoom_03.png",
+          "strip_path": "data\\tier3_output\\visual_evidence\\sample_01_simple_bg\\07_crop_skirt_pleats.png"
+        }
+      ]
+    },
+    {
+      "sample_code": "sample_02",
+      "full_key": "sample_02_complex_bg",
+      "description": "Complex Scenic Background (Akihabara Street)",
+      "dimensions": [
+        848,
+        1264
+      ],
+      "latency_ms": 1136.3387999590486,
+      "total_pixels": 1071872,
+      "transparent_pixels": 860330,
+      "soft_pixels": 23603,
+      "solid_pixels": 187939,
+      "transitional_alpha_pixels": 17446,
+      "transparent_percent": 80.26,
+      "soft_percent": 2.2,
+      "solid_percent": 17.53,
+      "transitional_alpha_percent": 1.63,
+      "soft_edge_pixels": 23603,
+      "flat_files": {
+        "mask": "sample_02_mask.png",
+        "checkerboard": "sample_02_checkerboard.png",
+        "comparison": "sample_02_comparison.png",
+        "zoom_crops": [
+          "sample_02_zoom_01.png",
+          "sample_02_zoom_02.png",
+          "sample_02_zoom_03.png"
+        ]
+      },
+      "crops": [
+        {
+          "zoom_key": "sample_02_zoom_01.png",
+          "title": "Hair Bangs & Face Contour",
+          "bbox": [
+            220,
+            320,
+            470,
+            570
+          ],
+          "flat_path": "data\\tier3_output\\visual_evidence\\sample_02_zoom_01.png",
+          "strip_path": "data\\tier3_output\\visual_evidence\\sample_02_complex_bg\\05_crop_hair_face.png"
+        },
+        {
+          "zoom_key": "sample_02_zoom_02.png",
+          "title": "Jacket & Street Boundary",
+          "bbox": [
+            550,
+            200,
+            800,
+            450
+          ],
+          "flat_path": "data\\tier3_output\\visual_evidence\\sample_02_zoom_02.png",
+          "strip_path": "data\\tier3_output\\visual_evidence\\sample_02_complex_bg\\06_crop_clothing_jacket.png"
+        },
+        {
+          "zoom_key": "sample_02_zoom_03.png",
+          "title": "Top-Right Neon Leak (Artifact)",
+          "bbox": [
+            0,
+            600,
+            250,
+            848
+          ],
+          "flat_path": "data\\tier3_output\\visual_evidence\\sample_02_zoom_03.png",
+          "strip_path": "data\\tier3_output\\visual_evidence\\sample_02_complex_bg\\07_crop_topright_artifact.png"
+        }
+      ]
+    },
+    {
+      "sample_code": "sample_03",
+      "full_key": "sample_03_long_hair",
+      "description": "Long Flowing Twintails & Ahoge (Miku Idol)",
+      "dimensions": [
+        848,
+        1264
+      ],
+      "latency_ms": 1052.0404999842867,
+      "total_pixels": 1071872,
+      "transparent_pixels": 609059,
+      "soft_pixels": 113213,
+      "solid_pixels": 349600,
+      "transitional_alpha_pixels": 93958,
+      "transparent_percent": 56.82,
+      "soft_percent": 10.56,
+      "solid_percent": 32.62,
+      "transitional_alpha_percent": 8.77,
+      "soft_edge_pixels": 113213,
+      "flat_files": {
+        "mask": "sample_03_mask.png",
+        "checkerboard": "sample_03_checkerboard.png",
+        "comparison": "sample_03_comparison.png",
+        "zoom_crops": [
+          "sample_03_zoom_01.png",
+          "sample_03_zoom_02.png",
+          "sample_03_zoom_03.png"
+        ]
+      },
+      "crops": [
+        {
+          "zoom_key": "sample_03_zoom_01.png",
+          "title": "Crown Ahoge & Bangs",
+          "bbox": [
+            100,
+            320,
+            350,
+            570
+          ],
+          "flat_path": "data\\tier3_output\\visual_evidence\\sample_03_zoom_01.png",
+          "strip_path": "data\\tier3_output\\visual_evidence\\sample_03_long_hair\\05_crop_hair_ahoge.png"
+        },
+        {
+          "zoom_key": "sample_03_zoom_02.png",
+          "title": "Flowing Left Twintail Strands",
+          "bbox": [
+            400,
+            10,
+            650,
+            260
+          ],
+          "flat_path": "data\\tier3_output\\visual_evidence\\sample_03_zoom_02.png",
+          "strip_path": "data\\tier3_output\\visual_evidence\\sample_03_long_hair\\06_crop_left_twintail.png"
+        },
+        {
+          "zoom_key": "sample_03_zoom_03.png",
+          "title": "Headset & Hair Tie",
+          "bbox": [
+            230,
+            480,
+            480,
+            730
+          ],
+          "flat_path": "data\\tier3_output\\visual_evidence\\sample_03_zoom_03.png",
+          "strip_path": "data\\tier3_output\\visual_evidence\\sample_03_long_hair\\07_crop_headset_accessory.png"
+        }
+      ]
+    },
+    {
+      "sample_code": "sample_04",
+      "full_key": "sample_04_small_accessories",
+      "description": "Small Accessories (Headphones, Ribbons, Charms)",
+      "dimensions": [
+        848,
+        1264
+      ],
+      "latency_ms": 1084.2699999921024,
+      "total_pixels": 1071872,
+      "transparent_pixels": 538089,
+      "soft_pixels": 285223,
+      "solid_pixels": 248560,
+      "transitional_alpha_pixels": 250753,
+      "transparent_percent": 50.2,
+      "soft_percent": 26.61,
+      "solid_percent": 23.19,
+      "transitional_alpha_percent": 23.39,
+      "soft_edge_pixels": 285223,
+      "flat_files": {
+        "mask": "sample_04_mask.png",
+        "checkerboard": "sample_04_checkerboard.png",
+        "comparison": "sample_04_comparison.png",
+        "zoom_crops": [
+          "sample_04_zoom_01.png",
+          "sample_04_zoom_02.png",
+          "sample_04_zoom_03.png"
+        ]
+      },
+      "crops": [
+        {
+          "zoom_key": "sample_04_zoom_01.png",
+          "title": "Headphone Cushion & Hair",
+          "bbox": [
+            200,
+            180,
+            450,
+            430
+          ],
+          "flat_path": "data\\tier3_output\\visual_evidence\\sample_04_zoom_01.png",
+          "strip_path": "data\\tier3_output\\visual_evidence\\sample_04_small_accessories\\05_crop_headphones_hair.png"
+        },
+        {
+          "zoom_key": "sample_04_zoom_02.png",
+          "title": "Hair Ribbons & Charms",
+          "bbox": [
+            250,
+            520,
+            500,
+            770
+          ],
+          "flat_path": "data\\tier3_output\\visual_evidence\\sample_04_zoom_02.png",
+          "strip_path": "data\\tier3_output\\visual_evidence\\sample_04_small_accessories\\06_crop_hair_accessories.png"
+        },
+        {
+          "zoom_key": "sample_04_zoom_03.png",
+          "title": "Bottom Semi-Transparent Fade",
+          "bbox": [
+            980,
+            250,
+            1230,
+            500
+          ],
+          "flat_path": "data\\tier3_output\\visual_evidence\\sample_04_zoom_03.png",
+          "strip_path": "data\\tier3_output\\visual_evidence\\sample_04_small_accessories\\07_crop_bottom_fade.png"
+        }
+      ]
+    },
+    {
+      "sample_code": "sample_05",
+      "full_key": "sample_05_translucent_costume",
+      "description": "Translucent Fabric & Wings (Fairy Sorceress)",
+      "dimensions": [
+        848,
+        1264
+      ],
+      "latency_ms": 1056.3063999870792,
+      "total_pixels": 1071872,
+      "transparent_pixels": 546573,
+      "soft_pixels": 176607,
+      "solid_pixels": 348692,
+      "transitional_alpha_pixels": 160824,
+      "transparent_percent": 50.99,
+      "soft_percent": 16.48,
+      "solid_percent": 32.53,
+      "transitional_alpha_percent": 15.0,
+      "soft_edge_pixels": 176607,
+      "flat_files": {
+        "mask": "sample_05_mask.png",
+        "checkerboard": "sample_05_checkerboard.png",
+        "comparison": "sample_05_comparison.png",
+        "zoom_crops": [
+          "sample_05_zoom_01.png",
+          "sample_05_zoom_02.png",
+          "sample_05_zoom_03.png"
+        ]
+      },
+      "crops": [
+        {
+          "zoom_key": "sample_05_zoom_01.png",
+          "title": "Sorceress Tiara & Hair",
+          "bbox": [
+            120,
+            360,
+            370,
+            610
+          ],
+          "flat_path": "data\\tier3_output\\visual_evidence\\sample_05_zoom_01.png",
+          "strip_path": "data\\tier3_output\\visual_evidence\\sample_05_translucent_costume\\05_crop_hair_tiara.png"
+        },
+        {
+          "zoom_key": "sample_05_zoom_02.png",
+          "title": "Translucent Fairy Wing",
+          "bbox": [
+            300,
+            580,
+            550,
+            830
+          ],
+          "flat_path": "data\\tier3_output\\visual_evidence\\sample_05_zoom_02.png",
+          "strip_path": "data\\tier3_output\\visual_evidence\\sample_05_translucent_costume\\06_crop_fairy_wing.png"
+        },
+        {
+          "zoom_key": "sample_05_zoom_03.png",
+          "title": "Sheer Chiffon Gown Fabric",
+          "bbox": [
+            850,
+            400,
+            1100,
+            650
+          ],
+          "flat_path": "data\\tier3_output\\visual_evidence\\sample_05_zoom_03.png",
+          "strip_path": "data\\tier3_output\\visual_evidence\\sample_05_translucent_costume\\07_crop_sheer_fabric.png"
+        }
+      ]
+    }
+  ]
+}

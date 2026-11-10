@@ -69,6 +69,10 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "directml_hardware: marks genuine hardware integration tests requiring real DirectX 12 GPU",
+]
+
 
 [tool.ruff]
 line-length = 100
